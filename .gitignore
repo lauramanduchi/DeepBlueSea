@@ -9,6 +9,7 @@ __pycache__/
 
 # C extensions
 *.so
+.idea
 
 # Distribution / packaging
 .Python
@@ -113,6 +114,12 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+/experiments/
+.idea/Tensorflow-architecture-templete.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
+experiments/
 
 ### Python Patch ###
 .venv/
@@ -217,6 +224,7 @@ fabric.properties
 
 
 # End of https://www.gitignore.io/api/pycharm
+
 
 # Avoid the data 
 *.jpg
