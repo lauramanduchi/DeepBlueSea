@@ -228,3 +228,8 @@ fabric.properties
 
 # Avoid the data 
 *.jpg
+*.zip
+*.csv
+
+# DS STORE
+*.DS_Store
