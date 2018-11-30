@@ -2,12 +2,46 @@ import numpy as np
 from skimage.segmentation import slic
 from skimage.transform import resize
 import os
-from data_generator import load_batch
 import warnings
+from matplotlib import image as mpimg
 
 # To remove future warning from being printed out
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+def load_image(infilename):
+    """ Reads images """
+    data = mpimg.imread(infilename)
+    return data
+
+
+def load_batch(path, pimg, pgt, nfiles, batch_size=1000):
+    # sample randomly
+    randomise = np.random.choice(nfiles, size=batch_size, replace=False)
+    # generate file lists
+    print('Reading file names ..')
+    filelist = []
+    filelist = [os.listdir(path + pimg)[i] for i in randomise]
+    gtlist = ['gt_' + filelist[i] for i in range(len(filelist))]
+    print('read')
+    # initialise datasets
+    imgs = []
+    gts = []
+    # read files
+    print('Reading ', batch_size, ' files...')
+    i = 0
+    while i < batch_size:
+        name = path + pimg + filelist[i]
+        gtname = path + pgt + gtlist[i]
+        if name.endswith(".jpg"):
+            i += 1
+            imgs.append(load_image(name))
+            gts.append(load_image(gtname))
+
+    imgs = np.asarray(imgs)
+    gts = np.asarray(gts)
+    print('Read ', i, ' files.')
+    print('Check: img size', imgs.shape, '\tgt size', gts.shape)
+    return imgs, gts
 
 def box(seg, i):
     xind = np.nonzero(seg.ravel('C') == i)
@@ -44,8 +78,8 @@ def get_labeled_patches(imgs, gts, n_segments = 100, thres1 = 0.2, thres2 = 0.2)
     :param imgs: images
     :param gts: masks
     :param n_segments: max number of patches for image
-    :param thres1:
-    :param thres2:
+    :param thres1: label = 1 if a proportion bigger than thres1 in the patch is masked as 1
+    :param thres2: label = 1 if pixels masked as 1 in patch / total number of pixels masked as 1 in the picture > thres2
     :return: patches: list of patches, size [len(img), n_patches_per_image, 80,80]
     :return: labels: list of labels per each patch, size [len(img), n_patches_per_image]
     """
