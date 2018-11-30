@@ -232,4 +232,4 @@ fabric.properties
 *.csv
 
 # DS STORE
-*.DS_Store.DS_Store
+*.DS_Store
