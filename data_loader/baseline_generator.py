@@ -1,13 +1,17 @@
 import numpy as np
 
-
 class DataGenerator:
     def __init__(self, config):
         self.config = config
         
         # load data here
-        self.input = np.ones((500, 784))
-        self.y = np.ones((500, 10))
+        # Upload history of filters used from traffic_cat
+        try:
+            self.input = load_obj('../data/patches')
+            self.y = load_obj('../data/labels_patches')
+        # Download history from traffic_cat
+        except:
+            print("There is no data. Save it first (run data_loader/preprocessing.py)!! ")
 
     def next_batch(self, batch_size):
         idx = np.random.choice(500, batch_size)

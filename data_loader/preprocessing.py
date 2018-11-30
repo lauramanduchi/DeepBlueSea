@@ -4,6 +4,7 @@ from skimage.transform import resize
 import os
 import warnings
 from matplotlib import image as mpimg
+from load_utils import save_obj
 
 # To remove future warning from being printed out
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -105,10 +106,25 @@ def get_labeled_patches(imgs, gts, n_segments = 100, thres1 = 0.2, thres2 = 0.2)
 
     return patches, labels
 
+
 if __name__ == "__main__":
     path = './data/'
     pimg = 'train_sample/'
     pgt = 'train_maps/'
     nfiles = len(os.listdir(path + pimg))
     imgs, gts = load_batch(path, pimg, pgt, nfiles, 2)
-    get_labeled_patches(imgs, gts)
+    patches, labels = get_labeled_patches(imgs, gts)
+
+    #flatten the data
+    list_labels = labels.copy()
+    labels_flat = []
+    [labels_flat.append(l) for patches_labels in list_labels for l in patches_labels]
+
+    list_patches = patches.copy()
+    patches_flat = []
+    [patches_flat.append(patch) for patches_img in list_patches for patch in patches_img]
+    
+    # saving the data
+    save_obj(patches_flat, '../data/patches')
+    save_obj(labels_flat, '../data/labels_patches')
+    print("Created patches and labels")
