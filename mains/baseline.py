@@ -29,6 +29,7 @@ def main():
 
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])
+    print(config.summary_dir)
     # create tensorflow session
     sess = tf.Session()
     # create your data generator
