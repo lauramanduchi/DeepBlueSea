@@ -4,7 +4,9 @@ from skimage.transform import resize
 import os
 import warnings
 from matplotlib import image as mpimg
-from load_utils import save_obj
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
+from data_loader.load_utils import save_obj, load_obj
 
 # To remove future warning from being printed out
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -113,18 +115,20 @@ if __name__ == "__main__":
     pgt = 'train_maps/'
     nfiles = len(os.listdir(path + pimg))
     imgs, gts = load_batch(path, pimg, pgt, nfiles, 2)
-    patches, labels = get_labeled_patches(imgs, gts)
+    list_patches, list_labels = get_labeled_patches(imgs, gts)
 
     #flatten the data
-    list_labels = labels.copy()
     labels_flat = []
     [labels_flat.append(l) for patches_labels in list_labels for l in patches_labels]
+    labels_flat = np.array(labels_flat)
 
-    list_patches = patches.copy()
     patches_flat = []
     [patches_flat.append(patch) for patches_img in list_patches for patch in patches_img]
+    patches_flat = np.array(patches_flat)
     
     # saving the data
     save_obj(patches_flat, '../data/patches')
     save_obj(labels_flat, '../data/labels_patches')
     print("Created patches and labels")
+    load_obj('../data/patches')
+    load_obj('../data/labels_patches')

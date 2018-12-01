@@ -12,7 +12,7 @@ def save_obj(obj, name):
         name: filename of the object
     """
     with open(name + '.pkl', 'wb') as f:
-        pkl.dump(obj, f, pkl.HIGHEST_PROTOCOL)
+        pkl.dump(obj, f)
 
 
 def load_obj(name):
