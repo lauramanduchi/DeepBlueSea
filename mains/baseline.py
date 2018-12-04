@@ -29,12 +29,10 @@ def main():
 
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])
-    print(config.summary_dir)
     # create tensorflow session
     sess = tf.Session()
     # create your data generator
     data = DataGenerator(config)
-    
     # create an instance of the model you want
     model = BaselineModel(config)
     # create tensorboard logger
@@ -43,8 +41,13 @@ def main():
     trainer = BaselineTrainer(sess, model, data, config, logger)
     #load model if exists
     model.load(sess)
-    # here you train your model
+    print("Model exists already, if you want to retrain it delete it first!")
+    #here you train your model
     trainer.train()
+
+    #TESTING
+    #load model if exists
+    model.load(sess)
 
 
 if __name__ == '__main__':

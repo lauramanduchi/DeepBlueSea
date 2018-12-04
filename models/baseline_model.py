@@ -48,6 +48,7 @@ class BaselineModel(BaseModel):
             self.cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y, logits=layer_fc2))
             self.train_step = tf.train.AdamOptimizer(self.config.learning_rate).minimize(self.cross_entropy,
                                                                                          global_step=self.global_step_tensor)
+
             correct_prediction = tf.equal(tf.argmax(layer_fc2, 1), self.y)
             self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 

@@ -127,8 +127,8 @@ if __name__ == "__main__":
     patches_flat = np.array(patches_flat)
     
     # saving the data
-    save_obj(patches_flat, '../data/patches')
-    save_obj(labels_flat, '../data/labels_patches')
+    save_obj(patches_flat, 'data/patches')
+    save_obj(labels_flat, 'data/labels_patches')
     print("Created patches and labels")
-    load_obj('../data/patches')
-    load_obj('../data/labels_patches')
+    load_obj('data/patches')
+    load_obj('data/labels_patches')
