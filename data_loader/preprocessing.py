@@ -4,6 +4,11 @@ from skimage.transform import resize
 import os
 import warnings
 from matplotlib import image as mpimg
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
+from data_loader.load_utils import save_obj, load_obj
+from numpy import unique
+from numpy import random
 
 # To remove future warning from being printed out
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -105,10 +110,76 @@ def get_labeled_patches(imgs, gts, n_segments = 100, thres1 = 0.2, thres2 = 0.2)
 
     return patches, labels
 
+
+def balanced_sample_maker(X, y, random_seed=None):
+    """ return a balanced data set by oversampling minority class
+        current version is developed on assumption that the positive
+        class is the minority.
+
+    Parameters:
+    ===========
+    X: {numpy.ndarrray}
+    y: {numpy.ndarray}
+    """
+    uniq_levels = unique(y)
+    if len(uniq_levels) < 2:
+        print("Not enough data, there are no images with a boat!")
+        exit(0)
+    uniq_counts = {level: sum(y == level) for level in uniq_levels}
+
+    if not random_seed is None:
+        random.seed(random_seed)
+
+    # find observation index of each class levels
+    groupby_levels = {}
+    for ii, level in enumerate(uniq_levels):
+        obs_idx = [idx for idx, val in enumerate(y) if val == level]
+        groupby_levels[level] = obs_idx
+
+    # downsampling on observations of negative label
+    sample_size = uniq_counts[0]  # number of negative samples
+    down_sample_idx = random.choice(groupby_levels[0], size=int(sample_size / 10), replace=True).tolist()
+
+    # oversampling on observations of positive label
+    over_sample_idx = random.choice(groupby_levels[1], size=int(sample_size / 10), replace=True).tolist()
+    balanced_copy_idx = down_sample_idx + over_sample_idx
+    random.shuffle(balanced_copy_idx)
+
+    return X[balanced_copy_idx, :], y[balanced_copy_idx]
+
+
 if __name__ == "__main__":
     path = './data/'
     pimg = 'train_sample/'
     pgt = 'train_maps/'
     nfiles = len(os.listdir(path + pimg))
     imgs, gts = load_batch(path, pimg, pgt, nfiles, 2)
-    get_labeled_patches(imgs, gts)
+    list_patches, list_labels = get_labeled_patches(imgs, gts)
+
+    # flatten the data
+    labels_flat = []
+    [labels_flat.append(l) for patches_labels in list_labels for l in patches_labels]
+    labels_flat = np.array(labels_flat)
+
+    patches_flat = []
+    [patches_flat.append(patch) for patches_img in list_patches for patch in patches_img]
+    patches_flat = np.array(patches_flat)
+
+    print("\nNumber of patches: {}".format(len(patches_flat)))
+    print("Number of labels: {} \n".format(len(labels_flat)))
+
+    # balance the data
+    X, y = balanced_sample_maker(patches_flat, labels_flat)
+
+    print("Length of patches after balancing: {} ".format(len(X)))
+    print("Length of saved labels after balancing: {} \n".format(len(y)))
+
+    # save the data
+    save_obj(X, 'data/patches')
+    save_obj(y, 'data/labels_patches')
+    print("Created patches and labels\n")
+    X = load_obj('data/patches')
+    y = load_obj('data/labels_patches')
+
+    print("Length of saved patches: {} \n".format(len(X)))
+    print("Length of saved labels: {} \n".format(len(y)))
