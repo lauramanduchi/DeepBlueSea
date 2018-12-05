@@ -233,3 +233,6 @@ fabric.properties
 
 # DS STORE
 *.DS_Store
+
+# Having pbs with xml files:
+*.xml
