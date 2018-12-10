@@ -1,9 +1,10 @@
 {
   "exp_name": "baseline",
-  "num_epochs": 10,
+  "num_epochs": 100,
   "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
-  "batch_size": 16,
+  "batch_size": 32,
+  "evaluate_every": 10,
   "state_size": [784],
   "max_to_keep":5,
   "num_channels": 3,
@@ -13,5 +14,6 @@
   "num_filters_conv2" : 32,
   "filter_size_conv3" : 3,
   "num_filters_conv3" : 64,
-  "fc_layer_size" : 128
+  "fc_layer_size" : 128,
+  "val_split" : 0.2
 }
