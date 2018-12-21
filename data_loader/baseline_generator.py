@@ -6,22 +6,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 from data_loader.load_utils import load_obj
 from data_loader.load_utils import try_to_load_as_pickled_object
 from sklearn.model_selection import train_test_split
+from data_loader.process_files import process_all_files
 
 class DataGenerator:
     def __init__(self, config):
         self.config = config
 
         # load data here
-        #try:
-        #input = load_obj('./data/patches')
-        #y = load_obj('./data/labels_patches')
-        input = try_to_load_as_pickled_object('./data/patches.pkl')
-        y = try_to_load_as_pickled_object('./data/labels_patches.pkl')
-        # except Exception as e:
-        #     print("\n")
-        #     print(e)
-        #     print("\nThere is no data. Save it first (run data_loader/preprocessing.py)!! ")
-        #     exit(0)
+        #input = try_to_load_as_pickled_object('./data/patches.pkl')
+        #y = try_to_load_as_pickled_object('./data/labels_patches.pkl')
+        print("\nloading the data")
+        input, y = process_all_files([0,1000,2000,3000,4000])
+        print("\ndata loaded")
 
         self.input, self.input_dev, self.y, self.y_dev = train_test_split(input,
                                                                           y,

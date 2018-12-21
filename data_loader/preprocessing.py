@@ -51,12 +51,12 @@ def load_batch(path, pimg, pgt, nfiles, batch_size=1000, startAt = 0):
     print('Check: img size', imgs.shape, '\tgt size', gts.shape)
     return imgs, gts
 
-def load_test_batch(path, pimg, nfiles, batch_size=1000, startAt = 0):
+def load_test_batch(path, pimg, nfiles, batch_size=1000):
     # sample randomly
-    #randomise = np.random.choice(nfiles, size=batch_size, replace=False)
+    randomise = np.random.choice(nfiles, size=batch_size, replace=False)
     # generate file lists
     print('Reading file names ..')
-    filelist = [os.listdir(path + pimg)[i] for i in range(startAt, startAt + batch_size)]
+    filelist = [os.listdir(path + pimg)[i] for i in randomise]
     print('read')
     # initialise datasets
     imgs = []
@@ -87,13 +87,13 @@ def old_box(seg, i):
 
 def box(seg):
     list_box = []
-    for i in range(np.max(seg)):
+    for i in range(np.max(seg)+1):
         xind = np.nonzero(seg.ravel('C') == i)
-        [xmax, _] = np.unravel_index(np.max(xind), seg.shape, order='C')
-        [xmin, _] = np.unravel_index(np.min(xind), seg.shape, order='C')
+        [xmax, _] = np.unravel_index(np.max(xind), seg.shape, order = 'C')
+        [xmin, _] = np.unravel_index(np.min(xind), seg.shape, order = 'C')
         yind = np.nonzero(seg.ravel('F') == i)
-        [_, ymax] = np.unravel_index(np.max(yind), seg.shape, order='F')
-        [_, ymin] = np.unravel_index(np.min(yind), seg.shape, order='F')
+        [_, ymax] = np.unravel_index(np.max(yind), seg.shape, order = 'F')
+        [_, ymin] = np.unravel_index(np.min(yind), seg.shape, order = 'F')
         list_box.append(np.array([xmax, ymax, xmin, ymin]))
     return list_box
 
@@ -115,14 +115,14 @@ def patch_cat(gt_SLIC, thres1, thres2):
     gt = gt_SLIC[0]
     SLIC = gt_SLIC[1]
     label_list = []
-    for i in range(np.max(SLIC)):
+    for i in range(np.max(SLIC)+1):
         num = np.sum(gt[SLIC == i] > 125)
         denom = gt[SLIC == i].size
         size_true = np.sum(gt > 125)
-        if float(num) / float(denom) > thres1:
+        if float(num)/float(denom)>thres1:
             label_list.append(1)
         else:
-            if float(size_true) > 0 and float(num) / float(size_true) > thres2:
+            if float(size_true) > 0 and float(num)/float(size_true) > thres2:
                 label_list.append(1)
             else:
                 label_list.append(0)
@@ -144,15 +144,15 @@ def xpatchify(img_SLIC_boxed):
     SLIC = img_SLIC_boxed[1]
     boxed = img_SLIC_boxed[2]
     list_patches = []
-    for i in range(np.max(SLIC)):
-        [inda, indb] = np.nonzero(SLIC != i)
+    for i in range(np.max(SLIC)+1):
+        [inda, indb] = np.nonzero(SLIC!=i)
         imtemp = np.copy(img)
-        imtemp[inda, indb, :] = 0
+        imtemp[inda,indb,:] = 0
         x_temp = imtemp[int(boxed[i][2]):int(boxed[i][0]),
-                 int(boxed[i][3]):int(boxed[i][1])]
-        x_train = resize(x_temp, (80, 80))
+                     int(boxed[i][3]):int(boxed[i][1])]
+        x_train = resize(x_temp, (80,80))
         list_patches.append(x_train)
-    return (list_patches)
+    return(list_patches)
 
 
 def old_get_labeled_patches(imgs, gts, n_segments=100, thres1=0.2, thres2=0.2):
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--startAt",
                         help="image index to start preprocess", type=int)
     args = parser.parse_args()
-    index = args.startAt
+    index = args.startAt if args.startAt else 0
     path = './data/'
     pimg = 'train_sample/'
     pgt = 'train_maps/'

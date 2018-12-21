@@ -49,19 +49,8 @@ def main():
     create_dirs([config.summary_dir, config.checkpoint_dir])
     # create tensorflow session
     sess = tf.Session()
-    # create your data generator
-    data = DataGenerator(config)
     # create an instance of the model you want
     model = BaselineModel(config)
-    # create tensorboard logger
-    logger = Logger(sess, config)
-    # create trainer and pass all the previous components to it
-    trainer = BaselineTrainer(sess, model, data, config, logger)
-    # load model if exists
-    model.load(sess)
-    print("Model exists already, if you want to retrain it delete it first!")
-    # here you train your model
-    #trainer.train()
 
     # TESTING
     # load model if exists
