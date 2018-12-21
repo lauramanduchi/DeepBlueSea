@@ -10,7 +10,8 @@ from data_loader.load_utils import save_obj, load_obj
 from numpy import unique
 from numpy import random
 import parmap
-
+import time
+import argparse
 # To remove future warning from being printed out
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -21,13 +22,13 @@ def load_image(infilename):
     return data
 
 
-def load_batch(path, pimg, pgt, nfiles, batch_size=1000):
+def load_batch(path, pimg, pgt, nfiles, batch_size=1000, startAt = 0):
     # sample randomly
-    randomise = np.random.choice(nfiles, size=batch_size, replace=False)
+    #randomise = np.random.choice(nfiles, size=batch_size, replace=False)
     # generate file lists
     print('Reading file names ..')
     filelist = []
-    filelist = [os.listdir(path + pimg)[i] for i in randomise]
+    filelist = [os.listdir(path + pimg)[i] for i in range(startAt, startAt + batch_size)]
     gtlist = ['gt_' + filelist[i] for i in range(len(filelist))]
     print('read')
     # initialise datasets
@@ -39,8 +40,8 @@ def load_batch(path, pimg, pgt, nfiles, batch_size=1000):
     while i < batch_size:
         name = path + pimg + filelist[i]
         gtname = path + pgt + gtlist[i]
+        i += 1
         if name.endswith(".jpg"):
-            i += 1
             imgs.append(load_image(name))
             gts.append(load_image(gtname))
 
@@ -49,6 +50,29 @@ def load_batch(path, pimg, pgt, nfiles, batch_size=1000):
     print('Read ', i, ' files.')
     print('Check: img size', imgs.shape, '\tgt size', gts.shape)
     return imgs, gts
+
+def load_test_batch(path, pimg, nfiles, batch_size=1000, startAt = 0):
+    # sample randomly
+    #randomise = np.random.choice(nfiles, size=batch_size, replace=False)
+    # generate file lists
+    print('Reading file names ..')
+    filelist = [os.listdir(path + pimg)[i] for i in range(startAt, startAt + batch_size)]
+    print('read')
+    # initialise datasets
+    imgs = []
+    # read files
+    print('Reading ', batch_size, ' files...')
+    i = 0
+    while i < batch_size:
+        name = path + pimg + filelist[i]
+        i += 1
+        if name.endswith(".jpg"):
+            imgs.append(load_image(name))
+
+    imgs = np.asarray(imgs)
+    print('Read ', i, ' files.')
+    print('Check: img size', imgs.shape)
+    return imgs
 
 
 def old_box(seg, i):
@@ -191,6 +215,28 @@ def get_labeled_patches(imgs, gts, n_segments=100, thres1=0.2, thres2=0.2):
 
     return patches, labels
 
+def get_patches(imgs, n_segments=100, thres1=0.2, thres2=0.2):
+    """
+    Get all the patches from the set of images.
+    :param imgs: images
+    :param gts: masks
+    :param n_segments: max number of patches for image
+    :param thres1: label = 1 if a proportion bigger than thres1 in the patch is masked as 1
+    :param thres2: label = 1 if pixels masked as 1 in patch / total number of pixels masked as 1 in the picture > thres2
+    :return: patches: list of patches, size [len(img), n_patches_per_image, 80,80]
+    :return: labels: list of labels per each patch, size [len(img), n_patches_per_image]
+    """
+    n = len(imgs)
+    SLIC_list = np.asarray([slic(imgs[i, :], n_segments, compactness=20, sigma=10) for i in range(len(imgs))])
+
+    # run box function to find all superpixel patches sizes
+    boxes = parmap.map(box, SLIC_list)
+
+    # populating x_train
+    patches = parmap.map(xpatchify, zip(imgs, SLIC_list, boxes))
+
+    return patches, SLIC_list
+
 
 def balanced_sample_maker(X, y, random_seed=None):
     """ return a balanced data set by oversampling minority class and downsampling majority class
@@ -229,11 +275,17 @@ def balanced_sample_maker(X, y, random_seed=None):
     return X[balanced_copy_idx, :], y[balanced_copy_idx]
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--startAt",
+                        help="image index to start preprocess", type=int)
+    args = parser.parse_args()
+    index = args.startAt
     path = './data/'
     pimg = 'train_sample/'
     pgt = 'train_maps/'
     nfiles = len(os.listdir(path + pimg))
-    imgs, gts = load_batch(path, pimg, pgt, nfiles, 20)
+    startTime = time.time()
+    imgs, gts = load_batch(path, pimg, pgt, nfiles, startAt = index)
     list_patches, list_labels = get_labeled_patches(imgs, gts)
     print("Got the patches and labels.")
 
@@ -256,11 +308,12 @@ if __name__ == "__main__":
     print("Length of saved labels after balancing: {} \n".format(len(y)))
 
     # save the data
-    save_obj(X, 'data/patches')
-    save_obj(y, 'data/labels_patches')
+    save_obj(X, 'data/patches_' + str(index))
+    save_obj(y, 'data/labels_patches_' + str(index))
     print("Created patches and labels\n")
-    X = load_obj('data/patches')
-    y = load_obj('data/labels_patches')
+    print("Time is {}".format(time.time() - startTime))
+    X = load_obj('data/patches_' + str(index))
+    y = load_obj('data/labels_patches_' + str(index))
 
     print("Length of saved patches: {} \n".format(len(X)))
     print("Length of saved labels: {} \n".format(len(y)))
