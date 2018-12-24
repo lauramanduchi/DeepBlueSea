@@ -34,7 +34,7 @@ def main():
     path = './data/'
     pimg = 'test_sample/'
     nfiles = len(os.listdir(path + pimg))
-    b_size = 10
+    b_size = 50
     imgs = load_test_batch(path, pimg, nfiles, batch_size=b_size)
     list_patches, SLIC_list = get_patches(imgs)
     print("Got the patches.")

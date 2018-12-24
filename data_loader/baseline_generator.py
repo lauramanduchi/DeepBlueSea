@@ -16,7 +16,7 @@ class DataGenerator:
         #input = try_to_load_as_pickled_object('./data/patches.pkl')
         #y = try_to_load_as_pickled_object('./data/labels_patches.pkl')
         print("\nloading the data")
-        input, y = process_all_files([0,1000,2000,3000,4000])
+        input, y = process_all_files([0,1000,2000,3000,4000,5000,6000,7000,8000,9000])
         print("\ndata loaded")
 
         self.input, self.input_dev, self.y, self.y_dev = train_test_split(input,

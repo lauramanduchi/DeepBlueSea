@@ -28,6 +28,7 @@ def process_all_files(list_indices):
         patches = np.append(patches, tmp1, axis=0)
         tmp2 = try_to_load_as_pickled_object('data/labels_patches_' + str(i) + '.pkl')
         labels = np.append(labels, tmp2, axis=0)
+        print("loaded data " + str(i))
     return patches, labels
     #save_obj(patches, 'data/patches')
     #save_obj(labels, 'data/labels_patches')

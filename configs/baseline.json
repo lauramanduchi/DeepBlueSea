@@ -1,9 +1,9 @@
 {
   "exp_name": "baseline",
-  "num_epochs": 20,
-  "num_iter_per_epoch": 300,
+  "num_epochs": 80,
+  "num_iter_per_epoch": 200,
   "learning_rate": 0.001,
-  "batch_size": 32,
+  "batch_size": 64,
   "evaluate_every": 100,
   "state_size": [784],
   "max_to_keep":5,

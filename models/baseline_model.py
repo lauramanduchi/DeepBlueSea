@@ -12,7 +12,7 @@ class BaselineModel(BaseModel):
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool)
 
-        self.x = tf.placeholder(tf.float32, shape=[None, 80, 80, self.config.num_channels])
+        self.x = tf.placeholder(tf.float32, shape=[None, 60, 60, self.config.num_channels])
         self.y = tf.placeholder(tf.int64, shape=[None])
 
 

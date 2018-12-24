@@ -150,7 +150,7 @@ def xpatchify(img_SLIC_boxed):
         imtemp[inda,indb,:] = 0
         x_temp = imtemp[int(boxed[i][2]):int(boxed[i][0]),
                      int(boxed[i][3]):int(boxed[i][1])]
-        x_train = resize(x_temp, (80,80))
+        x_train = resize(x_temp, (60,60))
         list_patches.append(x_train)
     return(list_patches)
 
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     pgt = 'train_maps/'
     nfiles = len(os.listdir(path + pimg))
     startTime = time.time()
-    imgs, gts = load_batch(path, pimg, pgt, nfiles, startAt = index)
+    imgs, gts = load_batch(path, pimg, pgt, nfiles, batch_size=1000, startAt = index)
     list_patches, list_labels = get_labeled_patches(imgs, gts)
     print("Got the patches and labels.")
 
