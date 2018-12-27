@@ -236,3 +236,5 @@ fabric.properties
 
 # Having pbs with xml files:
 *.xml
+*vcs.xml
+*baseRefactoring.xml
