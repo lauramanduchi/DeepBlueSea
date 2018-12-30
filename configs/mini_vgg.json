@@ -1,0 +1,23 @@
+{
+  "exp_name": "mini_vgg",
+  "debug": 1,
+  "num_epochs": 80,
+  "num_iter_per_epoch": 200,
+  "learning_rate": 0.001,
+  "batch_size": 64,
+  "evaluate_every": 100,
+  "state_size": [
+    784
+  ],
+  "max_to_keep": 5,
+  "train": 0,
+  "num_channels": 3,
+  "initial_im_size": 768,
+  "filter_size_conv1": 3,
+  "num_filters_conv1": 64,
+  "filter_size_conv2": 3,
+  "num_filters_conv2": 64,
+  "fc_layer_size": 256,
+  "num_features": 50,
+  "val_split": 0.2
+}
