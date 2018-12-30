@@ -20,7 +20,7 @@ class FasterRcnnModel(BaseModel):
         self.is_training = tf.placeholder(tf.bool)
 
         '''
-        self.x: input image
+        self.x: input image batch [batch_size, 60, 60, num_channels]
         self.y:  
         '''
         self.x = tf.placeholder(tf.float32, shape=[None, 60, 60, self.config.num_channels])
@@ -73,15 +73,8 @@ class FasterRcnnModel(BaseModel):
 
 
             with tf.name_scope('loss'):
+                # TODO: add a loss
                 pass
-
-        with tf.name_scope("loss"):
-            self.cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y, logits=layer_fc2))
-            self.train_step = tf.train.AdamOptimizer(self.config.learning_rate).minimize(self.cross_entropy,
-                                                                                         global_step=self.global_step_tensor)
-            self.pred = tf.argmax(layer_fc2, 1)
-            correct_prediction = tf.equal(self.pred, self.y)
-            self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
     def init_saver(self):
@@ -91,10 +84,10 @@ class FasterRcnnModel(BaseModel):
 
 def create_windows(image, window_shape = 3):
     '''
-
-    :param image: input image
+    Passes sliding window over tensor to create new tensor
+    :param image: input tensor of dim [batch, height, width, depth]
     :param window_size: size of the sliding windows
-    :return: [height*width, window_size, window_size] shaped array
+    :return: [batch*height*width, window_size, window_size] shaped array
     '''
 
     # Be careful passing big images with small window sizes to this function as
@@ -104,3 +97,10 @@ def create_windows(image, window_shape = 3):
     windows = view_as_windows(image, window_shape=window_shape, step=1) # first two dims are height and width
     windows = windows.reshape((-1, window_shape, window_shape))
     return windows
+
+def single_window(w):
+    '''
+    creates a single window which is then passed to tf.map_fn to create all windows
+    :param w:
+    :return:
+    '''
