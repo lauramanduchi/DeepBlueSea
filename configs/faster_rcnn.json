@@ -4,5 +4,9 @@
   "num_iter_per_epoch": 1,
   "learning_rate": 0.001,
   "batch_size": 1,
-  "num_channels": 3
+  "num_channels": 3,
+  "max_to_keep": 5,
+  "window_size": 3,
+  "sliding_hidden_layer_size": 128,
+  "n_proposal_boxes": 9
 }
