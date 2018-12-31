@@ -28,11 +28,11 @@ class FasterRcnnTrainer(BaseTrain):
         self.model.save(self.sess)
 
     def train_step(self):  # hello!
-        batch_x, batch_y = next(self.data.next_batch())
-        feed_dict = {self.model.x: batch_x,
-                     self.model.class_y: batch_class_y,
-                     self.model.reg_y: batch_reg_y,
+        batch = next(self.data.next_batch())
+        feed_dict = {self.model.x: batch['image'],
+                     self.model.class_y: batch['y_class'],
+                     self.model.reg_y: batch['y_reg'],
                      self.model.is_training: True}
-        _, loss, acc = self.sess.run([self.model.train_step, self.model.cross_entropy, self.model.accuracy],
+        _, loss, acc = self.sess.run([self.model.train_step, self.model.mse],
                                      feed_dict=feed_dict)
         return loss, acc
