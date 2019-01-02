@@ -2,7 +2,7 @@ from base.base_model import BaseModel
 import tensorflow as tf
 from models.utils_model import *
 
-# NOTE: WIP, PROBABLY DOESNT WORK YET
+# NOTE: At least appears to train but missing loss
 
 
 class FasterRcnnModel(BaseModel):
@@ -33,14 +33,9 @@ class FasterRcnnModel(BaseModel):
 
             next_element = iterator.get_next()
 
-            #self.x = tf.placeholder(tf.float32, shape=[None, 768, 768, self.config.num_channels])
-
-            #self.class_y = tf.placeholder(tf.float32, shape=[None, 768, 768, 2*self.config.n_proposal_boxes])
-            #self.reg_y = tf.placeholder(tf.float32, shape=[None, 768, 768, 4*self.config.n_proposal_boxes])
-
             self.x = next_element['image']
-            self.class_y = next_element['y_class']
-            self.reg_y = next_element['y_reg']
+            self.y_class = next_element['y_class']
+            self.y_reg = next_element['y_reg']
 
             tf.summary.image(name = 'input_images', tensor=self.x, max_outputs=3)
 
@@ -90,7 +85,7 @@ class FasterRcnnModel(BaseModel):
                 with tf.name_scope('loss'):
 
                     #self.cross_entropy =
-                    self.mse = tf.losses.mean_squared_error(labels=self.reg_y,
+                    self.mse = tf.losses.mean_squared_error(labels=self.y_reg,
                                                             predictions=self.reg_scores)
 
 
