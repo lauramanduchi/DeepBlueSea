@@ -8,45 +8,46 @@ class DataGenerator:
         self.config = config
 
         path = self.config.training_data_path
+        self.y_raw = pd.read_csv(self.config.labels_file)
 
         nfiles = len(os.listdir(path))
-        filelist = [path + os.listdir(path)[i] for i in range(nfiles)]
+        filelist = [[path + os.listdir(path)[i], self.classification_data_parser(os.listdir(path)[i])] for i in range(nfiles)]
         filenames = tf.constant(filelist)
 
         dataset = tf.data.Dataset.from_tensor_slices(filenames)
         dataset = dataset.map(lambda x:self._ondisk_parse_(x)).shuffle(True).batch(self.config.batch_size)
 
         self.dataset_iterator = dataset.make_one_shot_iterator()
-        self.y_raw = pd.read_csv(self.config.labels_file)
 
 
     def _ondisk_parse_(self, filename):
 
-        filename_tf = tf.cast(filename, tf.string)
+        filename_tf = tf.cast(filename[0], tf.string)
 
         image_string = tf.read_file(filename_tf)
         image = tf.image.decode_jpeg(image_string)
         image = tf.cast(image, tf.float32)
 
-        # TODO: replace this with an actual loading in of the matrix
 
-        y_class, y_reg = self.classification_data_parser(filename, n_proposals=self.config.n_proposal_boxes)
+        #y_class, y_reg = self.classification_data_parser(filename)
+        y_class, y_reg = filename[1]
 
-        # TODO: Generate the ones in the matrix on the fly from the csv.
-        y_class = tf.convert_to_tensor(y_class, dtype=tf.int16)
-        y_reg = tf.convert_to_tensor(y_reg, dtype=tf.int16)
+        y_class = tf.convert_to_tensor(y_class, dtype=tf.uint8)
+        y_reg = tf.convert_to_tensor(y_reg, dtype=tf.float32)
 
         return dict({'image': image, 'y_class': y_class, 'y_reg': y_reg})
 
-    def classification_data_parser(self, filename, n_proposals, iou_thresh=0.7):
+    def classification_data_parser(self, filename, iou_thresh=0.7):
+        print(filename)
         # TODO: include the widths and ratios of anchors in a cleaner format
         # Note this formualtion of anchor dimension is temporary
         anchor_widths = [9, 21, 41, 5, 9, 21, 9, 9, 41]
         anchor_heights = [9, 21, 41, 9, 21, 41, 5, 9, 41]
 
         # Select rows from csv that contain the neccesary images
+        # TODO: THIS DOESNT WORK BECAUSE FILENAME IS A TENSOR
         ground_truths = self.y_raw[self.y_raw.ImageId == filename]
-        y_class = np.zeros((768, 768, 2 * self.config.n_proposal_boxes))
+        y_class = np.zeros((768, 768, self.config.n_proposal_boxes))
         y_reg = np.zeros((768, 768, 4 * self.config.n_proposal_boxes))
 
         if ground_truths.empty:
@@ -85,7 +86,11 @@ class DataGenerator:
 
                 anchor_left_bottom = (pixel_coord[0] - anchor_half_w, pixel_coord[1] - anchor_half_h)
                 anchor_right_top = (pixel_coord[0] + anchor_half_w, pixel_coord[1] + anchor_half_h)
-                across_gt_ious.append(iou(gt_box['lb'], gt_box['rt'], anchor_left_bottom, anchor_right_top))
+                across_gt_ious.append(iou(
+                    (gt_box['lb_w'], 768 - gt_box['lb_h']),
+                    (gt_box['rt_w'], 768 - gt_box['rt_h']),
+                    anchor_left_bottom,
+                    anchor_right_top))
             ious.append(max(across_gt_ious))
 
         return (np.array(ious) >= iou_thresh).astype(int)

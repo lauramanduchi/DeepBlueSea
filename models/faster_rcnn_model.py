@@ -23,9 +23,9 @@ class FasterRcnnModel(BaseModel):
         self.y:  
         '''
         with tf.name_scope('data'):
-            data_structure = {'image': tf.float32, 'y_class': tf.int16, 'y_reg': tf.int16}
+            data_structure = {'image': tf.float32, 'y_class': tf.uint8, 'y_reg': tf.float32}
             data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
-                          'y_class': tf.TensorShape([None, 768, 768, 2*self.config.n_proposal_boxes]),
+                          'y_class': tf.TensorShape([None, 768, 768, self.config.n_proposal_boxes]),
                           'y_reg': tf.TensorShape([None, 768, 768, 4*self.config.n_proposal_boxes])}
 
             self.handle = tf.placeholder(tf.string, shape=[])
@@ -37,7 +37,8 @@ class FasterRcnnModel(BaseModel):
             self.y_class = next_element['y_class']
             self.y_reg = next_element['y_reg']
 
-            tf.summary.image(name = 'input_images', tensor=self.x, max_outputs=3)
+            tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
+            tf.summary.image(name='y_classification', tensor=tf.expand_dims(self.y_class[:,:,:,2], -1), max_outputs=1)
 
         with tf.name_scope('model'):
             with tf.name_scope('feature_maps'):

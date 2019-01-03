@@ -10,6 +10,6 @@
   "sliding_hidden_layer_size": 128,
   "n_proposal_boxes": 9,
   "training_data_path": "../data/test_mini/",
-  "labels_file": "../data/boxes_v2.csv",
+  "labels_file": "../data/labels/boxes_v2.csv",
   "iou_threshold": 0.7
 }
