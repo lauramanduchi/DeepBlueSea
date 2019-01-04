@@ -61,12 +61,6 @@ class MiniVGG(BaseModel):
         if self.config.debug == 1:
             print("layer_conv2.shape", layer_conv2.shape)
 
-            debug_layer = create_convolutional_layer(input=layer_conv2,
-                                                     num_input_channels=self.config.num_filters_conv2,
-                                                     conv_filter_size=self.config.filter_size_conv2,
-                                                     num_filters=3,
-                                                     maxpool=0)
-            print("debug_layer.shape", debug_layer.shape)
 
         pool = tf.nn.max_pool(value=layer_conv2,
                               ksize=[1, 2, 2, 1],
