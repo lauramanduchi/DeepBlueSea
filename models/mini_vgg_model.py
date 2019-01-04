@@ -61,7 +61,6 @@ class MiniVGG(BaseModel):
         if self.config.debug == 1:
             print("layer_conv2.shape", layer_conv2.shape)
 
-
         pool = tf.nn.max_pool(value=layer_conv2,
                               ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1],
