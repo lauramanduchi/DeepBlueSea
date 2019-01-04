@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 def create_weights(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
@@ -38,31 +39,59 @@ def create_convolutional_layer(input,
     return layer
 
 
-def create_deconvolutional_layer(input,
-                                 num_output_classes,
-                                 conv_filter_size,
-                                 num_filters,
-                                 stride=2):
-    # We shall define the weights that will be trained using create_weights function.
-    shape = [None, conv_filter_size, conv_filter_size, num_filters]
-    weights = create_weights(shape=shape)
-
-    # We create biases using the create_biases function. These are also trained.
-    # biases = create_biases(num_filters)
-
-    # creating parameters
+def create_deconvolutional_layer(input, num_filters, name, upscale_factor):
+    kernel_size = 2 * upscale_factor - upscale_factor % 2
+    stride = upscale_factor
     strides = [1, stride, stride, 1]
+    with tf.variable_scope(name):
+        # Shape of the input tensor
+        batch_size = tf.shape(input)[0]
+        input_size = input.get_shape().as_list()[1]
+        h = input_size * stride
+        w = input_size * stride
+        # put everything together
+        ds = [batch_size]
+        ds.append(h)
+        ds.append(w)
+        ds.append(num_filters)
+        deconv_shape = tf.stack(ds)
 
-    # creating deconvolution
-    layer = tf.nn.conv2d_transpose(value=input,
-                                   filter=weights,
-                                   output_shape=shape,
-                                   strides=strides,
-                                   padding='SAME')
+        filter_shape = [kernel_size, kernel_size, num_filters, num_filters]
+        weights = get_bilinear_filter(filter_shape, upscale_factor)
 
-    # layer += biases
+        deconv = tf.nn.conv2d_transpose(value=input,
+                                        filter=weights,
+                                        output_shape=deconv_shape,
+                                        strides=strides,
+                                        padding='SAME')
+    return deconv
 
-    return layer
+
+def get_bilinear_filter(filter_shape, upscale_factor):
+    # filter_shape is [width, height, num_in_channels, num_out_channels]
+    kernel_size = filter_shape[1]
+    ## Centre location of the filter for which value is calculated
+    if kernel_size % 2 == 1:
+        centre_location = upscale_factor - 1
+    else:
+        centre_location = upscale_factor - 0.5
+
+    bilinear = np.zeros([filter_shape[0], filter_shape[1]])
+    for x in range(filter_shape[0]):
+        for y in range(filter_shape[1]):
+            # Interpolation Calculation
+            value = (1 - abs((x - centre_location) / upscale_factor)) * (
+                        1 - abs((y - centre_location) / upscale_factor))
+            bilinear[x, y] = value
+    weights = np.zeros(filter_shape)
+    for i in range(filter_shape[2]):
+        weights[:, :, i, i] = bilinear
+    init = tf.constant_initializer(value=weights,
+                                   dtype=tf.float32)
+
+    bilinear_weights = tf.get_variable(name="decon_bilinear_filter", initializer=init,
+                                       shape=weights.shape)
+    return bilinear_weights
 
 
 def create_flatten_layer(layer):
