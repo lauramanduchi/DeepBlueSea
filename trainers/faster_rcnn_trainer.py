@@ -35,7 +35,7 @@ class FasterRcnnTrainer(BaseTrain):
 
     def train_step(self):
         feed_dict = {self.model.handle: self.sess.run(self.data.dataset_iterator.string_handle())}
-        _, loss, summaries = self.sess.run([self.model.train_step, self.model.mse, self.model.summaries],
+        _, loss, summaries = self.sess.run([self.model.train_step, self.model.loss, self.model.summaries],
                                            feed_dict=feed_dict)
 
         return loss, summaries
