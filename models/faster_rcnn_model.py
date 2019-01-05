@@ -3,7 +3,8 @@ import tensorflow as tf
 import numpy as np
 from models.utils_model import *
 
-# NOTE: At least appears to train but missing loss
+# STATUS: At least appears to train but needs verification, regression loading and loss not
+# implemented.
 
 
 class FasterRcnnModel(BaseModel):
