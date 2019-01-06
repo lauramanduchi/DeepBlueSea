@@ -74,7 +74,8 @@ ssh type `bjob_connect <job_id> -L 9000:localhost:6006`. This will connect
 to the node on which tensorboard is operating and 
 send the results of its port 6006 (to which tensorboard
 writes to) to the login nodes 9000 port which sends it
-to your port 9000. More info on `bjob_connect` [here](http://localhost:8888).
+to your port 9000. More info on `bjob_connect` 
+[here](https://scicomp.ethz.ch/wiki/Using_the_batch_system#bjob_connect).
 On your web browser `http://localhost:9000` 
 should (hopefully) resolve to tensorboard.
 
