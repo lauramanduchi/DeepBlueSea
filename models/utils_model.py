@@ -123,3 +123,39 @@ def create_fc_layer(input,
         layer = tf.nn.relu(layer)
 
     return layer
+
+def create_convolution(input,
+                       num_input_channels,
+                       conv_filter_size,
+                       num_filters,
+                       stride=1,
+                       data_format="NHWC"):
+    '''
+    Simplified version of create_convolutional_layer that doesn't include max pooling or activation function
+    :param input: input tensor
+    :param num_input_channels: number of input channels
+    :param conv_filter_size: width and height of square conv filter
+    :param num_filters: number of filters to be applied
+    :param stride: scalar stride size for both width and height
+    :param data_format: see tensorflow documentation
+    :return:
+    '''
+    if data_format == "NHWC":
+        strides = [1, stride, stride, 1]
+    elif data_format == "NCHW":
+        strides = [1, 1, stride, stride]
+    ## We shall define the weights that will be trained using create_weights function.
+    weights = create_weights(shape=[conv_filter_size, conv_filter_size, num_input_channels, num_filters])
+    ## We create biases using the create_biases function. These are also trained.
+    biases = create_biases(num_filters)
+
+
+    ## Creating the convolutional layer
+    layer = tf.nn.conv2d(input=input,
+                         filter=weights,
+                         strides=strides,
+                         padding='SAME')
+
+    layer += biases
+
+    return layer
