@@ -20,7 +20,7 @@ When finished you should get a window on the right
 like the below image. However, it'll likely be
 empty (and hence no green). 
 
-![setup](readme_imgs/setup.png)
+![setup](readme_imgs/complete.png)
 
 Start right clicking
 directories (or the whole directory) on the left
