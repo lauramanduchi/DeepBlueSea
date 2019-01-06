@@ -20,10 +20,6 @@ class FasterRcnnModel(BaseModel):
     def build_model(self):
         # self.is_training = tf.placeholder(tf.bool)
 
-        '''
-        self.x: input image batch [batch_size, 768, 768, num_channels]
-        self.y:  
-        '''
         with tf.name_scope('data'):
 
             data_structure = {'image': tf.float32, 'y_map': tf.float32}
@@ -69,9 +65,16 @@ class FasterRcnnModel(BaseModel):
                     intersection = tf.nn.conv2d(self.y_map, anchor, strides=[1, 1, 1, 1], padding='SAME')
 
                     # union is the area of the map (per map layer, and per batch entry) + the anchor area (in 2d)
-                    union = tf.reduce_sum(self.y_map, [1, 2], keepdims=True) + anchor_area
+                    # TODO: check that minusing intersection does so entry wise.
+                    union = tf.reduce_sum(self.y_map, [1, 2], keepdims=True) + anchor_area - intersection
                     ious = tf.divide(intersection, union)
                     max_iou_over_ground_truth = tf.reduce_max(ious, -1)
+
+                    tf.summary.scalar(name='max_gt_iou_' + str(i),
+                                      tensor=tf.reduce_max(max_iou_over_ground_truth))
+
+                    summarise_map(name='iou_' + str(i), tensor=max_iou_over_ground_truth)
+
                     labels = tf.greater(max_iou_over_ground_truth, self.config.iou_threshold)
                     labels = tf.cast(labels, tf.float32)
                     # TODO: test this somehow
@@ -82,23 +85,43 @@ class FasterRcnnModel(BaseModel):
                 self.y_class = tf.stack(y_class, axis=-1)
 
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
+            tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
 
-            visualise_y_map = tf.expand_dims(self.y_map[:,:,:,0], -1)
-            tf.summary.image(name='y_map', tensor=visualise_y_map, max_outputs=1)
 
         with tf.name_scope('model'):
             with tf.name_scope('feature_maps'):
 
-                # TODO: extract a feature map. Should return tensor the same shape as the input
-                # seperate loss here which has the purpose of feature extraction.
+                layer_conv1 = create_convolutional_layer(input=self.x,
+                                                         num_input_channels=self.config.num_channels,
+                                                         conv_filter_size=self.config.filter_size_conv1,
+                                                         num_filters=self.config.num_filters_conv1,
+                                                         maxpool=0,
+                                                         name="conv_layer_1")
 
-                # Placeholder: identity map as a feature extractor.
-                self.feature_maps = tf.identity(self.x, name='identity')
+                layer_conv2 = create_convolutional_layer(input=layer_conv1,
+                                                         num_input_channels=self.config.num_filters_conv1,
+                                                         conv_filter_size=self.config.filter_size_conv2,
+                                                         num_filters=self.config.num_filters_conv2,
+                                                         maxpool=0,
+                                                         name='conv_layer_2')
 
-                tf.summary.image(name='feature_maps', tensor=self.feature_maps, max_outputs=1)
+                pool = tf.nn.max_pool(value=layer_conv2,
+                                      ksize=[1, 2, 2, 1],
+                                      strides=[1, 2, 2, 1],
+                                      padding='SAME')
 
-                with tf.name_scope('loss'):
-                    pass
+                self.feature_maps = create_deconvolutional_layer(input=pool,
+                                                            num_filters=self.config.num_filters_conv2,
+                                                            name='deconvolution',
+                                                            upscale_factor=2)
+
+                # self.feature_maps = create_convolutional_layer(input=layer_deconv,
+                #                                                num_input_channels=self.config.num_filters_conv2,
+                #                                                conv_filter_size=self.config.initial_im_size,
+                #                                                num_filters=self.config.num_features,
+                #                                                maxpool=0)
+
+                tf.summary.image(name='feature_maps', tensor=self.feature_maps[:,:,:,0:3], max_outputs=3)
 
             with tf.name_scope('region_proposal_network'):
 
@@ -106,7 +129,7 @@ class FasterRcnnModel(BaseModel):
                     # Realise that the sliding window can be implemented as a convolution
                     with tf.name_scope('sliding_window'):
                         window_outputs = create_convolution(input=self.feature_maps,
-                                                            num_input_channels=self.config.num_channels,
+                                                            num_input_channels=self.config.num_features,
                                                             conv_filter_size=self.config.window_size,
                                                             num_filters=self.config.sliding_hidden_layer_size,
                                                             stride=1,
@@ -134,6 +157,7 @@ class FasterRcnnModel(BaseModel):
                     sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
                                                                          logits=self.class_scores)
 
+                    # TODO: maybe take mean over batch and sum over other dims
                     classification_loss = tf.reduce_sum(sigmoid_ce)
                     regression_loss = 0 #tf.losses.mean_squared_error(labels=self.y_reg, predictions=self.reg_scores)
 

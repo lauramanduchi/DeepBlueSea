@@ -81,7 +81,7 @@ class DataGenerator:
 
         b = np.zeros([len(list_of_arr), dim_arr[0], dim_arr[1], maximum_n_boats])
         for i, arr in enumerate(list_of_arr):
-            b[i,:, :, :arr.shape[0]] = arr
+            b[i,:, :, :arr.shape[2]] = arr
         return b
 
 

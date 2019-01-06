@@ -1,15 +1,21 @@
 {
   "exp_name": "faster_rcnn",
-  "num_epochs": 10,
-  "num_iter_per_epoch": 3,
+  "num_epochs": 800,
+  "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
   "batch_size": 1,
   "num_channels": 3,
-  "max_to_keep": 5,
+  "max_to_keep": 1,
   "window_size": 3,
-  "sliding_hidden_layer_size": 128,
+  "sliding_hidden_layer_size": 64,
   "n_proposal_boxes": 9,
-  "training_data_path": "../data/test_mini/",
+  "training_data_path": "../data/train_sample/",
   "labels_file": "../data/labels/boxes_v2.csv",
-  "iou_threshold": 0.2
+  "iou_threshold": 0.5,
+  "initial_im_size": 768,
+  "filter_size_conv1": 3,
+  "num_filters_conv1": 64,
+  "filter_size_conv2": 3,
+  "num_filters_conv2": 64,
+  "num_features": 64
 }

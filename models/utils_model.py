@@ -13,37 +13,39 @@ def create_convolutional_layer(input,
                                num_input_channels,
                                conv_filter_size,
                                num_filters,
-                               maxpool=1):
-    ## We shall define the weights that will be trained using create_weights function.
-    weights = create_weights(shape=[conv_filter_size, conv_filter_size, num_input_channels, num_filters])
-    ## We create biases using the create_biases function. These are also trained.
-    biases = create_biases(num_filters)
+                               maxpool=1,
+                               name=None):
+    with tf.name_scope(name):
+        ## We shall define the weights that will be trained using create_weights function.
+        weights = create_weights(shape=[conv_filter_size, conv_filter_size, num_input_channels, num_filters])
+        ## We create biases using the create_biases function. These are also trained.
+        biases = create_biases(num_filters)
 
-    ## Creating the convolutional layer
-    layer = tf.nn.conv2d(input=input,
-                         filter=weights,
-                         strides=[1, 1, 1, 1],
-                         padding='SAME')
+        ## Creating the convolutional layer
+        layer = tf.nn.conv2d(input=input,
+                             filter=weights,
+                             strides=[1, 1, 1, 1],
+                             padding='SAME')
 
-    layer += biases
+        layer += biases
 
-    ## We shall be using max-pooling.
-    if maxpool == 1:
-        layer = tf.nn.max_pool(value=layer,
-                               ksize=[1, 2, 2, 1],
-                               strides=[1, 2, 2, 1],
-                               padding='SAME')
-    ## Output of pooling is fed to Relu which is the activation function for us.
-    layer = tf.nn.relu(layer)
+        ## We shall be using max-pooling.
+        if maxpool == 1:
+            layer = tf.nn.max_pool(value=layer,
+                                   ksize=[1, 2, 2, 1],
+                                   strides=[1, 2, 2, 1],
+                                   padding='SAME')
+        ## Output of pooling is fed to Relu which is the activation function for us.
+        layer = tf.nn.relu(layer)
 
-    return layer
+        return layer
 
 
 def create_deconvolutional_layer(input, num_filters, name, upscale_factor):
     kernel_size = 2 * upscale_factor - upscale_factor % 2
     stride = upscale_factor
     strides = [1, stride, stride, 1]
-    with tf.variable_scope(name):
+    with tf.name_scope(name):
         # Shape of the input tensor
         batch_size = tf.shape(input)[0]
         input_size = input.get_shape().as_list()[1]
@@ -159,3 +161,14 @@ def create_convolution(input,
     layer += biases
 
     return layer
+
+def summarise_map(name, tensor):
+    '''
+    Summarises a sliced tensor that has no depth by just adding a depth dim
+    :param name: name for the opp
+    :param tensor: tensor of shape [batch, h, w]
+    :return:
+    '''
+
+    expanded_map = tf.expand_dims(tensor, -1)
+    tf.summary.image(name=name, tensor=expanded_map, max_outputs=1)
