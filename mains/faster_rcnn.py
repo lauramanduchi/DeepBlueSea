@@ -3,7 +3,7 @@ import os
 import sys
 
 # To import from sibling directory ../utils
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 
 from data_loader.faster_rcnn_loader import DataGenerator
 from models.faster_rcnn_model import FasterRcnnModel
@@ -15,9 +15,6 @@ from utils.utils import get_args
 
 
 def main():
-    # capture the config path from the run arguments
-    # then process the json configuration file
-    # parse -c and put the wright config file ex. "-c configs/baseline.json"
 
     config = process_config("../configs/faster_rcnn.json")
 
@@ -26,6 +23,7 @@ def main():
     # create tensorflow session
     sess = tf.Session()
     # create your data generator
+    print('Starting Data Gen')
     data = DataGenerator(config)
     # create an instance of the model you want
     model = FasterRcnnModel(config)
@@ -41,7 +39,7 @@ def main():
 
     #TESTING
     #load model if exists
-    model.load(sess)
+    #model.load(sess)
 
 
 
