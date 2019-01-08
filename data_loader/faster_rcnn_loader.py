@@ -2,6 +2,8 @@ import os
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from matplotlib import image as mpimg
 
 
 
@@ -13,21 +15,42 @@ class DataGenerator:
         self.y_raw = pd.read_csv(self.config.labels_file)
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
-        nfiles = len(files)
-        filelist = [[path + x] for x in files]
 
-        print('Converting y data to maps...')
-        y_data = self.padder([self.get_y_data(file) for file in files])
-        print('Converted')
-        filenames = tf.constant(filelist)
-        y_data = tf.constant(y_data, dtype=tf.float32)
+        #filelist = [[path + x] for x in files[0:2]] # remember to delete [0:2] !!
 
-        dataset = tf.data.Dataset.from_tensor_slices((filenames,y_data))
-        dataset = dataset.map(lambda filename, y_arr:self._ondisk_parse_(filename, y_arr)).shuffle(True).batch(self.config.batch_size)
+        #files = np.asarray(files)
 
-        self.dataset_iterator = dataset.make_one_shot_iterator()
+        #print('Converting y data to maps...')
+        #y_data = self.padder([self.get_y_data(file) for file in files[0:2]])
+        #print('Converted')
 
-    def _ondisk_parse_(self, filename, y_map):
+        #filenames = tf.constant(filelist)
+        #y_data = tf.constant(y_data, dtype=tf.float32)
+
+        #dataset = tf.data.Dataset.from_tensor_slices((filenames,y_data))
+        #dataset = dataset.map(lambda filename, y_arr:self._ondisk_parse_(filename, y_arr)).shuffle(True).batch(self.config.batch_size)
+
+        #self.dataset_iterator = dataset.make_one_shot_iterator()
+
+        self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+
+    def next_batch(self, batch_size):
+        idx = np.random.choice(len(self.input), batch_size)
+        sub_input = [self.input[i] for i in idx]
+        filenames = [self.config.training_data_path + x for x in sub_input]
+        input = self.read_images(filenames)
+        y_data = self.padder([self.get_y_data(file) for file in sub_input])
+        yield input, y_data
+
+    def next_batch_dev(self, batch_size):
+        idx = np.random.choice(len(self.input_dev), batch_size)
+        sub_input_dev = [self.input_dev[i] for i in idx]
+        filenames_dev = [self.config.training_data_path + x for x in sub_input_dev]
+        input_dev = self.read_images(filenames_dev)
+        y_data_dev = self.padder([self.get_y_data(file) for file in sub_input_dev])
+        yield input_dev, y_data_dev
+
+    def read_images(self, filenames):
         '''
         Function applied to every data entry to load the data. The output of this is the input format
         to the model.
@@ -36,13 +59,12 @@ class DataGenerator:
         :return:
         '''
 
-        filename_tf = tf.cast(filename[0], tf.string)
-
-        image_string = tf.read_file(filename_tf)
-        image = tf.image.decode_jpeg(image_string)
-        image = tf.cast(image, tf.float32)
-
-        return dict({'image': image, 'y_map': y_map})
+        imgs = []
+        for i in range(len(filenames)):
+            print(filenames[i])
+            imgs.append(mpimg.imread(filenames[i]))
+        imgs = np.asarray(imgs)
+        return imgs
 
     def get_y_data(self, filename):
         '''

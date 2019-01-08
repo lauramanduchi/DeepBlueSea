@@ -3,7 +3,7 @@
   "num_epochs": 800,
   "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
-  "batch_size": 1,
+  "batch_size": 2,
   "num_channels": 3,
   "max_to_keep": 1,
   "window_size": 3,
@@ -17,5 +17,7 @@
   "num_filters_conv1": 64,
   "filter_size_conv2": 3,
   "num_filters_conv2": 64,
-  "num_features": 64
+  "num_features": 64,
+  "val_split" : 0.2,
+  "evaluate_every": 100
 }

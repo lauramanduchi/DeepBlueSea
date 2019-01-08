@@ -18,24 +18,27 @@ class FasterRcnnModel(BaseModel):
         self.init_saver()
 
     def build_model(self):
-        # self.is_training = tf.placeholder(tf.bool)
+        self.is_training = tf.placeholder(tf.bool)
 
         with tf.name_scope('data'):
 
-            data_structure = {'image': tf.float32, 'y_map': tf.float32}
-            data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
-                          'y_map': tf.TensorShape([None, 768, 768, None])}
+            self.x = tf.placeholder(tf.float32, shape=[None, 768, 768, self.config.num_channels])
+            self.y_map = tf.placeholder(tf.float32, shape=[None, 768, 768, None])
+
+            #data_structure = {'image': tf.float32, 'y_map': tf.float32}
+            #data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
+            #             'y_map': tf.TensorShape([None, 768, 768, None])}
 
             # TODO: add this to the config somehow
             anchor_shapes = [(11, 11), (21, 21), (31, 31), (5, 11), (11, 21), (21, 31), (11, 5), (21, 11), (31, 21)]
 
-            self.handle = tf.placeholder(tf.string, shape=[])
-            iterator = tf.data.Iterator.from_string_handle(self.handle, data_structure, data_shape)
+            #self.handle = tf.placeholder(tf.string, shape=[])
+            #iterator = tf.data.Iterator.from_string_handle(self.handle, data_structure, data_shape)
 
-            next_element = iterator.get_next()
+            #next_element = iterator.get_next()
 
-            self.x = next_element['image']
-            self.y_map = next_element['y_map']
+            #self.x = next_element['image']
+            #self.y_map = next_element['y_map']
 
             # TODO: implement y_reg correctly, presently a placeholder
             self.y_reg = tf.zeros((self.config.batch_size, 768, 768, 4*self.config.n_proposal_boxes))
