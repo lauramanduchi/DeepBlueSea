@@ -50,8 +50,11 @@ class FasterRcnnTrainer(BaseTrain):
     #     return loss, summaries
 
     def train_step(self):
-        batch_x, batch_y = next(self.data.next_batch(self.config.batch_size))
-        feed_dict = {self.model.x: batch_x, self.model.y_map: batch_y, self.model.is_training: True}
+        batch_x, batch_y_class, batch_y_reg = next(self.data.next_batch(self.config.batch_size))
+        feed_dict = {self.model.x: batch_x,
+                     self.model.y_map: batch_y_class,
+                     self.model.y_reg: batch_y_reg,
+                     self.model.is_training: True}
         _, loss, summaries = self.sess.run([self.model.train_step, self.model.loss, self.model.summaries],
                                      feed_dict=feed_dict)
         time_str = datetime.datetime.now().isoformat()
@@ -61,8 +64,11 @@ class FasterRcnnTrainer(BaseTrain):
         return loss, summaries
 
     def dev_step(self):
-        batch_x, batch_y = next(self.data.next_batch_dev(self.config.batch_size))
-        feed_dict = {self.model.x: batch_x, self.model.y_map: batch_y, self.model.is_training: False}
+        batch_x, batch_y_class, batch_y_reg = next(self.data.next_batch_dev(self.config.batch_size))
+        feed_dict = {self.model.x: batch_x,
+                     self.model.y_map: batch_y_class,
+                     self.model.y_reg: batch_y_reg,
+                     self.model.is_training: False}
 
         _, loss, summaries = self.sess.run([self.model.train_step, self.model.loss, self.model.summaries],
                                            feed_dict=feed_dict)

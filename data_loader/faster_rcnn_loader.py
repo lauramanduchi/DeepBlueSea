@@ -15,7 +15,8 @@ class DataGenerator:
         self.y_raw = pd.read_csv(self.config.labels_file)
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
-
+        if config.debug == 1:
+            files = files[0:2]
         #filelist = [[path + x] for x in files[0:2]] # remember to delete [0:2] !!
 
         #files = np.asarray(files)
@@ -39,16 +40,18 @@ class DataGenerator:
         sub_input = [self.input[i] for i in idx]
         filenames = [self.config.training_data_path + x for x in sub_input]
         input = self.read_images(filenames)
-        y_data = self.padder([self.get_y_data(file) for file in sub_input])
-        yield input, y_data
+        y_data = self.padder([self.get_y_data(file)[0] for file in sub_input])
+        y_coord = self.padder([self.get_y_data(file)[1] for file in sub_input])
+        yield input, y_data, y_coord
 
     def next_batch_dev(self, batch_size):
         idx = np.random.choice(len(self.input_dev), batch_size)
         sub_input_dev = [self.input_dev[i] for i in idx]
         filenames_dev = [self.config.training_data_path + x for x in sub_input_dev]
         input_dev = self.read_images(filenames_dev)
-        y_data_dev = self.padder([self.get_y_data(file) for file in sub_input_dev])
-        yield input_dev, y_data_dev
+        y_data_dev = self.padder([self.get_y_data(file)[0] for file in sub_input_dev])
+        y_coord_dev = self.padder([self.get_y_data(file)[1] for file in sub_input_dev])
+        yield input_dev, y_data_dev, y_coord_dev
 
     def read_images(self, filenames):
         '''
@@ -79,14 +82,19 @@ class DataGenerator:
 
         n_boxes = array_of_coords.shape[0]
         y_map = np.zeros((768, 768, n_boxes))
+        y_coord = np.zeros((768, 768, n_boxes * 4))
 
         for box_idx in range(n_boxes):
             # Loop over amount of boats per image ~ of order 10.
             box = array_of_coords[box_idx, :]
             # TODO: check that im using dimensions correctly here and agrees with static file
             y_map[box[0]:box[2], box[1]:box[3], box_idx] = 1
+            y_coord[:, :, 4 * box_idx + 0] = round((box[2] + box[0]) / 2)  # x-centre
+            y_coord[:, :, 4 * box_idx + 1] = round((box[3] + box[1]) / 2)  # y-centre
+            y_coord[:, :, 4 * box_idx + 2] = box[2] - box[0]  # width
+            y_coord[:, :, 4 * box_idx + 3] = box[3] - box[1]  # height
 
-        return y_map
+        return y_map, y_coord
 
     def padder(self, list_of_arr):
         '''
@@ -106,4 +114,20 @@ class DataGenerator:
             b[i,:, :, :arr.shape[2]] = arr
         return b
 
+    def padder_coord(self, list_of_arr):
+        '''
+        Pads each list of boat maps so all have the same depth (which is the max amount of
+        boats across all images) and creates a numpy array of the result.
+        :param list_of_arr: list of arrays, each shaped [768, 768, n_boats_in_this_image]
+        :return: numpy array of shape [len(list_of_arr), h, w, maximum_n_boats]
+        '''
 
+        maximum_n_boats = max([x.shape[1] for x in list_of_arr])
+        dim_arr = list_of_arr[0].shape
+
+        self.n_box_max = maximum_n_boats
+
+        b = np.zeros([len(list_of_arr), dim_arr[0], maximum_n_boats])
+        for i, arr in enumerate(list_of_arr):
+            b[i, :, :arr.shape[1]] = arr
+        return b
