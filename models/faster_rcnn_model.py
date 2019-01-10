@@ -200,10 +200,10 @@ class FasterRcnnModel(BaseModel):
                     if self.config.debug == 1:
                         print("checking if n_box is still alive here", n_box)
 
-                    # first let's do things the ugly way
-                    t_x = (self.reg_scores[:, :, :, 0] - reg_anchors[:, :, :, 0]) / reg_anchors[:, :, :, 2]
+                    t_x = tf.divide(tf.subtract(self.reg_scores[:, :, :, 0],
+                                                reg_anchors[:, :, :, 0]),
+                                    reg_anchors[:, :, :, 2])
 
-                    # note: I realsied too late that you could do this simply as above and did it the fancy way (below)
                     t_x_star = tf.divide(tf.subtract(self.y_reg[:, :, :, 0],
                                                      reg_anchors[:, :, :, 0]),
                                          reg_anchors[:, :, :, 2])
