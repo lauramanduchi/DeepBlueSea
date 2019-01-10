@@ -40,8 +40,17 @@ class DataGenerator:
         sub_input = [self.input[i] for i in idx]
         filenames = [self.config.training_data_path + x for x in sub_input]
         input = self.read_images(filenames)
-        y_data = self.padder([self.get_y_data(file)[0] for file in sub_input])
-        y_coord = self.padder([self.get_y_data(file)[1] for file in sub_input])
+
+        y_data = []
+        y_coord = []
+        for file in sub_input:
+            out_y_data = self.get_y_data(file)
+            y_data.append(out_y_data[0])
+            y_coord.append(out_y_data[1])
+
+        y_data = self.padder(y_data)
+        y_coord = self.padder(y_coord)
+
         yield input, y_data, y_coord
 
     def next_batch_dev(self, batch_size):
@@ -49,8 +58,16 @@ class DataGenerator:
         sub_input_dev = [self.input_dev[i] for i in idx]
         filenames_dev = [self.config.training_data_path + x for x in sub_input_dev]
         input_dev = self.read_images(filenames_dev)
-        y_data_dev = self.padder([self.get_y_data(file)[0] for file in sub_input_dev])
-        y_coord_dev = self.padder([self.get_y_data(file)[1] for file in sub_input_dev])
+
+        y_data_dev = []
+        y_coord_dev = []
+        for file in sub_input_dev:
+            out_y_data = self.get_y_data(file)
+            y_data_dev.append(out_y_data[0])
+            y_coord_dev.append(out_y_data[1])
+        y_data_dev = self.padder(y_data_dev)
+        y_coord_dev = self.padder(y_coord_dev)
+
         yield input_dev, y_data_dev, y_coord_dev
 
     def read_images(self, filenames):
