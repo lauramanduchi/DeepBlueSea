@@ -64,6 +64,7 @@ class FasterRcnnModel(BaseModel):
                 y_class = []
                 selected_boat_index = []
                 iou_mask = []
+                iou_average_for_summary = []
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
@@ -94,10 +95,7 @@ class FasterRcnnModel(BaseModel):
                     # for the regression ,we need to know which boat we want to look at
                     argmax_iou_over_ground_truth = tf.argmax(ious, -1)
 
-                    tf.summary.scalar(name='max_gt_iou_' + str(i),
-                                      tensor=tf.reduce_max(max_iou_over_ground_truth))
-
-                    summarise_map(name='iou_' + str(i), tensor=max_iou_over_ground_truth)
+                    iou_average_for_summary.append(max_iou_over_ground_truth)
 
                     labels = tf.greater(max_iou_over_ground_truth, self.config.iou_positive_threshold)
                     labels = tf.cast(labels, tf.float32)
@@ -113,6 +111,7 @@ class FasterRcnnModel(BaseModel):
                     # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
                     iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
 
+
                     y_class.append(labels)
                     selected_boat_index.append(argmax_iou_over_ground_truth)
 
@@ -125,6 +124,14 @@ class FasterRcnnModel(BaseModel):
 
                 # Stack IOU masks
                 iou_mask = tf.stack(iou_mask, -1)
+
+                # Stack iou_average_for_summary
+                iou_average_for_summary = tf.stack(iou_average_for_summary, -1)
+                iou_average_for_summary = tf.reduce_mean(iou_average_for_summary, -1)
+                tf.summary.scalar(name='max_over_pixels_average_groundtruth_iou_over_anchors',
+                                  tensor=tf.reduce_max(iou_average_for_summary))
+
+                summarise_map(name='average_groundtruth_iou_over_anchors', tensor=iou_average_for_summary)
 
                 # Filter y_reg by which boxes are positive
                 y_reg_gt = []
@@ -262,6 +269,19 @@ class FasterRcnnModel(BaseModel):
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
                 iou_mask_regression = tf.tile(tf.expand_dims(iou_mask, -1), [1,1,1,1,4])
                 masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
+
+                # For summary, summarise the regression loss for each of the 4 coordinates seperately to see
+                # if any particular one is under peforming.
+                seperate_coordinate_losses = tf.reduce_mean(
+                    tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3]),
+                    axis=0
+                )
+
+                tf.summary.scalar(name='x_center_reg_loss', tensor=seperate_coordinate_losses[0])
+                tf.summary.scalar(name='y_center_reg_loss', tensor=seperate_coordinate_losses[1])
+                tf.summary.scalar(name='width_reg_loss', tensor=seperate_coordinate_losses[2])
+                tf.summary.scalar(name='height_reg_loss', tensor=seperate_coordinate_losses[3])
+
 
                 regression_loss_per_sample = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
                 regression_loss = tf.reduce_mean(regression_loss_per_sample)
