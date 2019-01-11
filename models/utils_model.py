@@ -172,3 +172,23 @@ def summarise_map(name, tensor):
 
     expanded_map = tf.expand_dims(tensor, -1)
     tf.summary.image(name=name, tensor=expanded_map, max_outputs=1)
+
+
+def select_with_matrix_tf(tensor, indexer):
+    '''
+
+    :param tensor: input tensor of shape [batch, h, w, depth, n_vals]
+    :param indexer: indexing tensor of shape [batch, h, w] of ints which
+    indicates which layer of the depth dimension to take
+    :return: tensor of shape [batch, h, w, n_vals]
+    '''
+    batch_size, h, w, depth, n_vals = tensor.get_shape().as_list()
+    desired_shape = [batch_size, h, w]
+    index_list = [
+        tf.broadcast_to(tf.reshape(tf.range(batch_size, dtype=tf.int64), (-1, 1, 1)), desired_shape),
+        tf.broadcast_to(tf.reshape(tf.range(h, dtype=tf.int64), (1, -1, 1)), desired_shape),
+        tf.broadcast_to(tf.reshape(tf.range(w, dtype=tf.int64), (1, 1, -1)), desired_shape),
+        indexer
+    ]
+    index = tf.stack(index_list, -1)
+    return tf.gather_nd(tensor, index)
