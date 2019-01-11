@@ -33,21 +33,24 @@ class FasterRcnnModel(BaseModel):
             # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
                 anchor_shapes = [(11, 11), (21, 21), (31, 31), (5, 11), (11, 21), (21, 31), (11, 5), (21, 11), (31, 21)]
-                y_anchors = np.zeros((768, 768, 1))
+                n_anchors = len(anchor_shapes)
+                y_anchors = np.zeros((1, 768, 768, n_anchors, 4))
                 x = np.arange(768)
                 X, Y = np.meshgrid(x, x)
+                y_anchors[:, :, :, :, 0] = np.reshape(Y, (1, 768, 768, 1))
+                y_anchors[:, :, :, :, 1] = np.reshape(X, (1, 768, 768, 1))
+                i = 0
                 for anchor_shape in anchor_shapes:
-                    width = np.ones((768, 768)) * anchor_shape[0]
-                    length = np.ones((768, 768)) * anchor_shape[1]
-                    y_anchor = np.stack((X, Y, width, length), axis=2)
-                    y_anchors = np.concatenate((y_anchors, y_anchor), axis=2)
-                y_anchors = y_anchors[:, :, 1:]
-                reg_anchors = tf.reshape(tf.convert_to_tensor(y_anchors), shape=[1, 768, 768, 4 * len(anchor_shapes)])
+                    y_anchors[:, :, :, i, 2] = np.ones((1, 768, 768)) * anchor_shape[0]  # width
+                    y_anchors[:, :, :, i, 3] = np.ones((1, 768, 768)) * anchor_shape[1]  # length
+                    i += 1
                 # this last part needs to stay here with this code construction: we change the first dimension of
                 # the reg_anchors to the batch size implicitly (unsure if it works if done explicitly)
-                reg_anchors = tf.tile(reg_anchors, multiples=[tf.shape(self.y_reg)[0], 1, 1, 1])
+                reg_anchors = tf.tile(y_anchors, multiples=[tf.shape(self.y_reg)[0], 1, 1, 1, 1])
                 reg_anchors = tf.cast(reg_anchors, tf.float32)
 
+                if self.config.debug == 1:
+                    print("reg_anchors", reg_anchors.shape)
                 # self.handle = tf.placeholder(tf.string, shape=[])
             #iterator = tf.data.Iterator.from_string_handle(self.handle, data_structure, data_shape)
 
@@ -192,9 +195,8 @@ class FasterRcnnModel(BaseModel):
                     # TODO: maybe take mean over batch and sum over other dims
                     classification_loss = tf.reduce_sum(sigmoid_ce)
                     if self.config.debug == 1:
-                        print('reg_anchors  ', reg_anchors.shape)
-                        print('self.reg_scores ', self.reg_scores.shape)
-                        print('self.y_reg  ', self.y_reg.shape)
+                        print('sigmoid_ce  ', sigmoid_ce.shape)
+                        print('classification_loss  ', classification_loss.shape)
 
                     # TODO: this doesnt work
                     # use y_reg_boat to index the right boat
@@ -205,31 +207,32 @@ class FasterRcnnModel(BaseModel):
 
                     if self.config.debug == 1:
                         print("checking if n_box is still alive here", n_box)
+                        self.y_reg_gt = tf.zeros((tf.shape(self.y_reg)[0], 768, 768, self.config.n_proposal_boxes, 4))
 
-                    t_x = tf.divide(tf.subtract(self.reg_scores[:, :, :, 0],
-                                                reg_anchors[:, :, :, 0]),
-                                    reg_anchors[:, :, :, 2])
-
-                    t_x_star = tf.divide(tf.subtract(self.y_reg[:, :, :, 0],
-                                                     reg_anchors[:, :, :, 0]),
-                                         reg_anchors[:, :, :, 2])
-                    t_y = tf.divide(tf.subtract(self.reg_scores[:, :, :, 1],
-                                                reg_anchors[:, :, :, 1]),
-                                    reg_anchors[:, :, :, 3])
-                    t_y_star = tf.divide(tf.subtract(self.y_reg[:, :, :, 1],
-                                                     reg_anchors[:, :, :, 1]),
-                                         reg_anchors[:, :, :, 3])
-                    t_w = tf.log(tf.divide(self.reg_scores[:, :, :, 2],
-                                           reg_anchors[:, :, :, 2]))
-                    t_w_star = tf.log(tf.divide(self.y_reg[:, :, :, 2],
-                                                reg_anchors[:, :, :, 2]))
-                    t_h = tf.log(tf.divide(self.reg_scores[:, :, :, 3],
-                                           reg_anchors[:, :, :, 3]))
-                    t_h_star = tf.log(tf.divide(self.y_reg[:, :, :, 3],
-                                                reg_anchors[:, :, :, 3]))
+                    # t_x = (x_predict - x_anchor)/ w_anchor
+                    t_x = (self.reg_scores[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / reg_anchors[:, :, :, :, 2]
+                    t_x_star = (self.y_reg_gt[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / reg_anchors[:, :, :, :, 2]
+                    # t_y = (y_predict - y_anchor)/ h_anchor
+                    t_y = (self.reg_scores[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
+                    t_y_star = (self.y_reg_gt[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
+                    # t_w = log(w_predict / w_anchor)
+                    t_w = tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
+                    t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
+                    # t_h = log(h_predict / h_anchor)
+                    t_h = tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
+                    t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
+                    y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
+                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
+                    if self.config.debug == 1:
+                        print("y_reg_loss_gt small", y_reg_loss_gt.shape)
+                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
+                    if self.config.debug == 1:
+                        print("y_reg_loss_gt large", y_reg_loss_gt.shape)
                     if self.config.debug == 1:
                         print(t_x.shape, t_w.shape)
-                    regression_loss = 0 #tf.losses.mean_squared_error(labels=self.y_reg, predictions=self.reg_scores)
+                    regression_loss = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
+                                                                   predictions=y_reg_loss_pred)
+                    regression_loss = tf.reduce_sum(regression_loss)
 
                     self.loss = classification_loss + regression_loss
 
