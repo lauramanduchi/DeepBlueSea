@@ -265,9 +265,9 @@ class FasterRcnnModel(BaseModel):
                                                                          predictions=y_reg_loss_pred,
                                                                          reduction=tf.losses.Reduction.NONE)
 
-                # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
+                # Remember that we only look at positive (> upper iou thresh) boxes for regression
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
-                iou_mask_regression = tf.tile(tf.expand_dims(iou_mask, -1), [1,1,1,1,4])
+                iou_mask_regression = tf.tile(tf.expand_dims(self.y_class, -1), [1,1,1,1,4])
                 masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
 
                 # For summary, summarise the regression loss for each of the 4 coordinates seperately to see
