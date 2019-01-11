@@ -24,7 +24,7 @@ class FasterRcnnModel(BaseModel):
 
             self.x = tf.placeholder(tf.float32, shape=[None, 768, 768, self.config.num_channels])
             self.y_map = tf.placeholder(tf.float32, shape=[None, 768, 768, None])
-            self.y_reg = tf.placeholder(tf.float32, shape=[None, 768, 768, None])
+            self.y_reg = tf.placeholder(tf.float32, shape=[None, 768, 768, None, 4])
 
             #data_structure = {'image': tf.float32, 'y_map': tf.float32}
             #data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
@@ -59,13 +59,11 @@ class FasterRcnnModel(BaseModel):
             #self.x = next_element['image']
             #self.y_map = next_element['y_map']
 
-            # TODO: implement y_reg correctly, presently a placeholder
-            #self.y_reg = tf.zeros((self.config.batch_size, 768, 768, 4*self.config.n_proposal_boxes))
-
             with tf.name_scope('expand_y'):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
                 y_class = []
                 selected_boat_index = []
+                iou_mask = []
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
@@ -101,18 +99,48 @@ class FasterRcnnModel(BaseModel):
 
                     summarise_map(name='iou_' + str(i), tensor=max_iou_over_ground_truth)
 
-                    labels = tf.greater(max_iou_over_ground_truth, self.config.iou_threshold)
+                    labels = tf.greater(max_iou_over_ground_truth, self.config.iou_positive_threshold)
                     labels = tf.cast(labels, tf.float32)
 
-                    # TODO: test this somehow
+                    # We only deal in both losses with boxes with IOU above a upper threshold and
+                    # below a lower threshold and so here we create a mask which will be 1 for
+                    # all such iou scores and 0 for those inside the threshold so we can
+                    # use it as a weighting for the losses
+                    iou_mask_anchor = tf.logical_or(
+                        tf.greater(max_iou_over_ground_truth, self.config.iou_positive_threshold),
+                        tf.less(max_iou_over_ground_truth, self.config.iou_negative_threshold)
+                    )
+                    # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
+                    iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
+
                     y_class.append(labels)
                     selected_boat_index.append(argmax_iou_over_ground_truth)
+
                 # Stack all the anchors together in the end this is then of shape [batch, 768, 768, n_anchor]
                 self.y_class = tf.stack(y_class, axis=-1)
                 selected_boat_index = tf.stack(selected_boat_index, axis=-1)
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
                     print('selected_boat_index', selected_boat_index.shape)
+
+                # Stack IOU masks
+                iou_mask = tf.stack(iou_mask, -1)
+
+                # Filter y_reg by which boxes are positive
+                y_reg_gt = []
+                with tf.name_scope('filter_groundtruth_regression'):
+                    for k in range(n_anchors):
+                        # For each anchor run select_with_matrix_tf which filters the map of regression
+                        # coordinates y_reg to the (per pixel) particular boat indicated by selected_boat_index
+                        y_reg_gt_anchor = select_with_matrix_tf(tensor=self.y_reg,
+                                                                indexer=selected_boat_index[:,:,:, k],
+                                                                batch_size=self.config.batch_size)
+                        y_reg_gt.append(y_reg_gt_anchor)
+
+                    self.y_reg_gt = tf.stack(y_reg_gt, -2)
+
+
+            # Some summaries
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
             tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
 
@@ -187,37 +215,23 @@ class FasterRcnnModel(BaseModel):
 
 
 
-                with tf.name_scope('loss'):
+            with tf.name_scope('loss'):
 
-                    sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
-                                                                         logits=self.class_scores)
+                sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
+                                                                     logits=self.class_scores)
+                # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
+                print('IOU Mask Shape', iou_mask.shape)
+                masked_signoid_ce = tf.multiply(iou_mask, sigmoid_ce)
 
-                    classification_loss_per_sample = tf.reduce_sum(sigmoid_ce, axis = [1,2,3])
-                    classification_loss = tf.reduce_mean(classification_loss_per_sample)
+                classification_loss_per_sample = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
+                classification_loss = tf.reduce_mean(classification_loss_per_sample)
 
-                    if self.config.debug == 1:
-                        print('sigmoid_ce  ', sigmoid_ce.shape)
-                        print('classification_loss  ', classification_loss.shape)
+                if self.config.debug == 1:
+                    print('sigmoid_ce  ', sigmoid_ce.shape)
+                    print('classification_loss  ', classification_loss.shape)
 
-                    # TODO: this doesnt work
-                    # use selected_boat_index to index the right boat
-                    # use idx,idy = np.meshgrid(np.arange(768),np.arange(768))
-                    # then reg_scores[idx, idy, selected_boat_index]
-                    # ... in tensorflow
-                    # idx, idy = np.meshgrid(np.arange(768), np.arange(768))
 
-                    y_reg_gt = []
-                    for k in n_anchors:
-                        # For each anchor run select_with_matrix_tf which filters the map of regression
-                        # coordinates y_reg to the (per pixel) particular boat indicated by selected_boat_index
-                        y_reg_gt_anchor = select_with_matrix_tf(self.y_reg, selected_boat_index[:,:,:, k])
-                        y_reg_gt.append(y_reg_gt_anchor)
-
-                    self.y_reg_gt = tf.stack(y_reg_gt, -2)
-
-                    if self.config.debug == 1:
-                        print("checking if n_box is still alive here", n_box)
-
+                with tf.name_scope('create_adjusted_coordinates'):
                     # t_x = (x_predict - x_anchor)/ w_anchor
                     t_x = (self.reg_scores[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / reg_anchors[:, :, :, :, 2]
                     t_x_star = (self.y_reg_gt[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / reg_anchors[:, :, :, :, 2]
@@ -240,15 +254,21 @@ class FasterRcnnModel(BaseModel):
                     if self.config.debug == 1:
                         print(t_x.shape, t_w.shape)
 
-                    regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
-                                                                   predictions=y_reg_loss_pred)
-                    regression_loss_per_sample = tf.reduce_sum(regression_loss_per_pixel, axis = [1,2,3,4])
-                    regression_loss = tf.reduce_mean(regression_loss_per_sample)
+                regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
+                                                                         predictions=y_reg_loss_pred,
+                                                                         reduction=tf.losses.Reduction.NONE)
 
-                    self.loss = classification_loss + regression_loss
+                # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
+                # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
+                iou_mask_regression = tf.tile(tf.expand_dims(iou_mask, -1), [1,1,1,1,4])
+                masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
+
+                regression_loss_per_sample = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
+                regression_loss = tf.reduce_mean(regression_loss_per_sample)
+
+                self.loss = classification_loss + regression_loss
 
 
-                    # TODO: build correct loss
         with tf.name_scope('optimizer'):
             self.train_step = tf.train.AdamOptimizer(self.config.learning_rate).minimize(self.loss,
                                                                                          global_step=self.global_step_tensor)
