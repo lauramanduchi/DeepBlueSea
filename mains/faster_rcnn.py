@@ -33,9 +33,9 @@ def main():
     trainer = FasterRcnnTrainer(sess, model, data, config, logger)
     #load model if exists
     model.load(sess)
-    print("Model exists already, if you want to retrain it delete it first!")
+    # print("Model exists already, if you want to retrain it delete it first!")
     #here you train your model
-    # trainer.train()
+    trainer.train()
 
     #TESTING
     #load model if exists

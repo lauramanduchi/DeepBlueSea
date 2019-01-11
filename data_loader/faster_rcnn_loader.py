@@ -42,16 +42,16 @@ class DataGenerator:
         input = self.read_images(filenames)
 
         y_data = []
-        y_coord = []
+        y_reg = []
         for file in sub_input:
             out_y_data = self.get_y_data(file)
             y_data.append(out_y_data[0])
-            y_coord.append(out_y_data[1])
+            y_reg.append(out_y_data[1])
 
         y_data = self.padder(y_data)
-        y_coord = self.padder(y_coord)
+        y_reg = self.padder_coord(y_reg)
 
-        yield input, y_data, y_coord
+        yield input, y_data, y_reg
 
     def next_batch_dev(self, batch_size):
         idx = np.random.choice(len(self.input_dev), batch_size)
@@ -60,15 +60,15 @@ class DataGenerator:
         input_dev = self.read_images(filenames_dev)
 
         y_data_dev = []
-        y_coord_dev = []
+        y_reg_dev = []
         for file in sub_input_dev:
             out_y_data = self.get_y_data(file)
             y_data_dev.append(out_y_data[0])
-            y_coord_dev.append(out_y_data[1])
+            y_reg_dev.append(out_y_data[1])
         y_data_dev = self.padder(y_data_dev)
-        y_coord_dev = self.padder(y_coord_dev)
+        y_reg_dev = self.padder_coord(y_reg_dev)
 
-        yield input_dev, y_data_dev, y_coord_dev
+        yield input_dev, y_data_dev, y_reg_dev
 
     def read_images(self, filenames):
         '''
@@ -136,16 +136,15 @@ class DataGenerator:
         '''
         Pads each list of boat maps so all have the same depth (which is the max amount of
         boats across all images) and creates a numpy array of the result.
-        :param list_of_arr: list of arrays, each shaped [768, 768, n_boats_in_this_image]
-        :return: numpy array of shape [len(list_of_arr), h, w, maximum_n_boats]
+        :param list_of_arr: list of arrays, each shaped [768, 768, n_boats_in_this_image, depth] (depth typically 4)
+        :return: numpy array of shape [len(list_of_arr), h, w, maximum_n_boats, depth]
         '''
 
-        maximum_n_boats = max([x.shape[1] for x in list_of_arr])
+        maximum_n_boats = max([x.shape[2] for x in list_of_arr])
         dim_arr = list_of_arr[0].shape
+        depth = dim_arr[-1]
 
-        self.n_box_max = maximum_n_boats
-
-        b = np.zeros([len(list_of_arr), dim_arr[0], maximum_n_boats])
+        b = np.zeros([len(list_of_arr), dim_arr[0], dim_arr[1], maximum_n_boats, depth])
         for i, arr in enumerate(list_of_arr):
-            b[i, :, :arr.shape[1]] = arr
+            b[i, :, :, :arr.shape[2], :] = arr
         return b
