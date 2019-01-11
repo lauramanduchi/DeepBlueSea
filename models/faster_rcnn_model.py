@@ -192,8 +192,9 @@ class FasterRcnnModel(BaseModel):
                     sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
                                                                          logits=self.class_scores)
 
-                    # TODO: maybe take mean over batch and sum over other dims
-                    classification_loss = tf.reduce_sum(sigmoid_ce)
+                    classification_loss_per_sample = tf.reduce_sum(sigmoid_ce, axis = [1,2,3])
+                    classification_loss = tf.reduce_mean(classification_loss_per_sample)
+
                     if self.config.debug == 1:
                         print('sigmoid_ce  ', sigmoid_ce.shape)
                         print('classification_loss  ', classification_loss.shape)
@@ -238,9 +239,11 @@ class FasterRcnnModel(BaseModel):
                         print("y_reg_loss_gt large", y_reg_loss_gt.shape)
                     if self.config.debug == 1:
                         print(t_x.shape, t_w.shape)
-                    regression_loss = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
+
+                    regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
                                                                    predictions=y_reg_loss_pred)
-                    regression_loss = tf.reduce_sum(regression_loss)
+                    regression_loss_per_sample = tf.reduce_sum(regression_loss_per_pixel, axis = [1,2,3,4])
+                    regression_loss = tf.reduce_mean(regression_loss_per_sample)
 
                     self.loss = classification_loss + regression_loss
 
