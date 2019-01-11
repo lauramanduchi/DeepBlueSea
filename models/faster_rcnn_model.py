@@ -173,12 +173,18 @@ class FasterRcnnModel(BaseModel):
                                                                stride=1,
                                                                data_format="NHWC")
                     with tf.name_scope('regression_layer'):
-                        self.reg_scores = create_convolution(input=window_outputs,
+                        # reg_outputs: [batch_size, 768, 768, 4*self.config.n_proposal_boxes]
+                        reg_outputs = create_convolution(input=window_outputs,
                                                              num_input_channels=self.config.sliding_hidden_layer_size,
                                                              conv_filter_size=1,
                                                              num_filters=4*self.config.n_proposal_boxes,
                                                              stride=1,
                                                              data_format="NHWC")
+
+                        # self.reg_scores: [batch_size, 768, 768, self.config.n_proposal_boxes, 4]
+                        self.reg_scores = tf.reshape(tensor=reg_outputs,
+                                                     shape=[-1, 768, 768, self.config.n_proposal_boxes, 4],
+                                                     name='reshape_regression_outputs')
 
 
 

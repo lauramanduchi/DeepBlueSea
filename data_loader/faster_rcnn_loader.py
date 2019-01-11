@@ -99,19 +99,20 @@ class DataGenerator:
 
         n_boxes = array_of_coords.shape[0]
         y_map = np.zeros((768, 768, n_boxes))
-        y_coord = np.zeros((768, 768, n_boxes * 4))
+        y_reg = np.zeros((768, 768, n_boxes, 4))
 
         for box_idx in range(n_boxes):
             # Loop over amount of boats per image ~ of order 10.
             box = array_of_coords[box_idx, :]
-            # TODO: check that im using dimensions correctly here and agrees with static file
             y_map[box[0]:box[2], box[1]:box[3], box_idx] = 1
-            y_coord[:, :, 4 * box_idx + 0] = round((box[2] + box[0]) / 2)  # x-centre
-            y_coord[:, :, 4 * box_idx + 1] = round((box[3] + box[1]) / 2)  # y-centre
-            y_coord[:, :, 4 * box_idx + 2] = box[2] - box[0]  # width
-            y_coord[:, :, 4 * box_idx + 3] = box[3] - box[1]  # height
 
-        return y_map, y_coord
+            # Add boat box coordinates to y_reg
+            y_reg[:, :, box_idx, 0] = round((box[2] + box[0]) / 2)  # x-centre
+            y_reg[:, :, box_idx, 1] = round((box[3] + box[1]) / 2)  # y-centre
+            y_reg[:, :, box_idx, 2] = box[2] - box[0]  # width
+            y_reg[:, :, box_idx, 3] = box[3] - box[1]  # height
+
+        return y_map, y_reg
 
     def padder(self, list_of_arr):
         '''
