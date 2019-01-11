@@ -33,21 +33,25 @@ class FasterRcnnModel(BaseModel):
             # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
                 anchor_shapes = [(11, 11), (21, 21), (31, 31), (5, 11), (11, 21), (21, 31), (11, 5), (21, 11), (31, 21)]
-                y_anchors = np.zeros((768, 768, 1))
+                n_anchors = len(anchor_shapes)
+                y_anchors = np.zeros((768, 768, n_anchors, 4))
+                print(y_anchors.shape)
                 x = np.arange(768)
                 X, Y = np.meshgrid(x, x)
+                y_anchors[:, :, :, 0] = np.reshape(Y, (768, 768, 1))
+                y_anchors[:, :, :, 1] = np.reshape(X, (768, 768, 1))
+                i = 0
                 for anchor_shape in anchor_shapes:
-                    width = np.ones((768, 768)) * anchor_shape[0]
-                    length = np.ones((768, 768)) * anchor_shape[1]
-                    y_anchor = np.stack((X, Y, width, length), axis=2)
-                    y_anchors = np.concatenate((y_anchors, y_anchor), axis=2)
-                y_anchors = y_anchors[:, :, 1:]
-                reg_anchors = tf.reshape(tf.convert_to_tensor(y_anchors), shape=[1, 768, 768, 4 * len(anchor_shapes)])
+                    y_anchors[:, :, i, 2] = np.ones((768, 768)) * anchor_shape[0]  # width
+                    y_anchors[:, :, i, 3] = np.ones((768, 768)) * anchor_shape[1]  # length
+                    i += 1
                 # this last part needs to stay here with this code construction: we change the first dimension of
                 # the reg_anchors to the batch size implicitly (unsure if it works if done explicitly)
-                reg_anchors = tf.tile(reg_anchors, multiples=[tf.shape(self.y_reg)[0], 1, 1, 1])
+                reg_anchors = tf.tile(y_anchors, multiples=[tf.shape(self.y_reg)[0], 1, 1, 1])
                 reg_anchors = tf.cast(reg_anchors, tf.float32)
 
+                if self.config.debug == 1:
+                    print("reg_anchors", reg_anchors.shape)
                 # self.handle = tf.placeholder(tf.string, shape=[])
             #iterator = tf.data.Iterator.from_string_handle(self.handle, data_structure, data_shape)
 
