@@ -65,7 +65,7 @@ class FasterRcnnModel(BaseModel):
             with tf.name_scope('expand_y'):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
                 y_class = []
-                y_reg_boat = []
+                selected_boat_index = []
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
@@ -106,13 +106,13 @@ class FasterRcnnModel(BaseModel):
 
                     # TODO: test this somehow
                     y_class.append(labels)
-                    y_reg_boat.append(argmax_iou_over_ground_truth)
+                    selected_boat_index.append(argmax_iou_over_ground_truth)
                 # Stack all the anchors together in the end this is then of shape [batch, 768, 768, n_anchor]
                 self.y_class = tf.stack(y_class, axis=-1)
-                y_reg_boat = tf.stack(y_reg_boat, axis=-1)
+                selected_boat_index = tf.stack(selected_boat_index, axis=-1)
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
-                    print('y_reg_boat', y_reg_boat.shape)
+                    print('selected_boat_index', selected_boat_index.shape)
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
             tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
 
@@ -199,15 +199,23 @@ class FasterRcnnModel(BaseModel):
                         print('classification_loss  ', classification_loss.shape)
 
                     # TODO: this doesnt work
-                    # use y_reg_boat to index the right boat
+                    # use selected_boat_index to index the right boat
                     # use idx,idy = np.meshgrid(np.arange(768),np.arange(768))
-                    # then reg_scores[idx, idy, y_reg_boat]
+                    # then reg_scores[idx, idy, selected_boat_index]
                     # ... in tensorflow
-                    idx, idy = np.meshgrid(np.arange(768), np.arange(768))
+                    # idx, idy = np.meshgrid(np.arange(768), np.arange(768))
+
+                    y_reg_gt = []
+                    for k in n_anchors:
+                        # For each anchor run select_with_matrix_tf which filters the map of regression
+                        # coordinates y_reg to the (per pixel) particular boat indicated by selected_boat_index
+                        y_reg_gt_anchor = select_with_matrix_tf(self.y_reg, selected_boat_index[:,:,:, k])
+                        y_reg_gt.append(y_reg_gt_anchor)
+
+                    self.y_reg_gt = tf.stack(y_reg_gt, -2)
 
                     if self.config.debug == 1:
                         print("checking if n_box is still alive here", n_box)
-                        self.y_reg_gt = tf.zeros((tf.shape(self.y_reg)[0], 768, 768, self.config.n_proposal_boxes, 4))
 
                     # t_x = (x_predict - x_anchor)/ w_anchor
                     t_x = (self.reg_scores[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / reg_anchors[:, :, :, :, 2]
