@@ -120,6 +120,7 @@ class FasterRcnnModel(BaseModel):
                         # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
                         # the latter gives us the sum of the ground truth per image
                         # if the sum is positive, then there are boats in the image and we want to sample some
+                        # TODO: fix :)
                         n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
                                                      lambda: self.config.n_positive_samples,
                                                      lambda: 0)
@@ -129,6 +130,7 @@ class FasterRcnnModel(BaseModel):
                         # sampling
                         # note that atm pos_sample applies the same sampling over the whole batch
                         # refer to utils for the function
+                        # TODO: fix :)
                         pos_sample = tf.py_func(np_sample, [pos_labels, 1, n_positive_samples], tf.float32)
                         pos_labels = pos_labels * pos_sample
                         neg_sample = tf.py_func(np_sample, [neg_labels, -1, n_negative_samples], tf.float32)
