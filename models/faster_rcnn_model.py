@@ -63,6 +63,8 @@ class FasterRcnnModel(BaseModel):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
                 y_class = []
                 selected_boat_index = []
+                pos_mask = []
+                # neg_mask = []
                 iou_mask = []
                 n_box = tf.shape(self.y_map)[-1]
 
@@ -106,10 +108,35 @@ class FasterRcnnModel(BaseModel):
                     # below a lower threshold and so here we create a mask which will be 1 for
                     # all such iou scores and 0 for those inside the threshold so we can
                     # use it as a weighting for the losses
-                    iou_mask_anchor = tf.logical_or(
-                        tf.greater(max_iou_over_ground_truth, self.config.iou_positive_threshold),
-                        tf.less(max_iou_over_ground_truth, self.config.iou_negative_threshold)
-                    )
+                    pos_labels = tf.cast(tf.greater(max_iou_over_ground_truth,
+                                                    self.config.iou_positive_threshold), tf.float32)
+                    neg_labels = tf.cast(tf.less(max_iou_over_ground_truth,
+                                                 self.config.iou_negative_threshold), tf.float32)
+
+                    with tf.name_scope('sample'):
+                        # counting the number of positive samples.
+                        # if there are zero, then  we are in a "no_boats" batch image and sample consequently
+                        n_positive_samples = tf.cond(tf.reduce_sum(pos_labels) > 0,
+                                                     lambda: self.config.n_positive_samples,
+                                                     lambda: 0)
+                        n_negative_samples = tf.cond(tf.reduce_sum(pos_labels) > 0,
+                                                     lambda: self.config.n_negative_samples,
+                                                     lambda: self.config.n_negative_samples_when_no_boats)
+                        # sampling
+                        pos_sample = tf.py_func(np_sample, [pos_labels, 1, n_positive_samples], tf.float32)
+                        if self.config.debug:
+                            print("pos_sample.shape", pos_sample.shape)
+                        pos_labels = tf.cast(pos_labels, tf.float32) * pos_sample
+                        if self.config.debug:
+                            print("pos_mask.shape", pos_labels.shape)
+                        neg_sample = tf.py_func(np_sample, [neg_labels, -1, n_negative_samples], tf.float32)
+                        neg_labels = tf.cast(neg_labels, tf.float32) * neg_sample
+
+                    pos_mask.append(tf.cast(pos_labels, tf.float32))
+                    # neg_mask.append(tf.cast(neg_labels, tf.float32))
+                    # for now this only covers the
+
+                    iou_mask_anchor = pos_labels + neg_labels
                     # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
                     iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
 
@@ -119,12 +146,16 @@ class FasterRcnnModel(BaseModel):
                 # Stack all the anchors together in the end this is then of shape [batch, 768, 768, n_anchor]
                 self.y_class = tf.stack(y_class, axis=-1)
                 selected_boat_index = tf.stack(selected_boat_index, axis=-1)
+
+                # Stack IOU masks
+                pos_mask = tf.stack(pos_mask, -1)
+                #neg_mask = tf.stack(neg_mask, -1)
+                iou_mask = tf.stack(iou_mask, -1)
+
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
                     print('selected_boat_index', selected_boat_index.shape)
-
-                # Stack IOU masks
-                iou_mask = tf.stack(iou_mask, -1)
+                    print('pos_mask', pos_mask.shape)
 
                 # Filter y_reg by which boxes are positive
                 y_reg_gt = []
@@ -138,7 +169,6 @@ class FasterRcnnModel(BaseModel):
                         y_reg_gt.append(y_reg_gt_anchor)
 
                     self.y_reg_gt = tf.stack(y_reg_gt, -2)
-
 
             # Some summaries
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
@@ -246,21 +276,15 @@ class FasterRcnnModel(BaseModel):
                     t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
                     y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
                     y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
-                    if self.config.debug == 1:
-                        print("y_reg_loss_gt small", y_reg_loss_gt.shape)
-                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
-                    if self.config.debug == 1:
-                        print("y_reg_loss_gt large", y_reg_loss_gt.shape)
-                    if self.config.debug == 1:
-                        print(t_x.shape, t_w.shape)
+
 
                 regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
                                                                          predictions=y_reg_loss_pred,
                                                                          reduction=tf.losses.Reduction.NONE)
 
-                # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
+                # Remember that we only look at positive (> upper iou thresh) boxes
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
-                iou_mask_regression = tf.tile(tf.expand_dims(iou_mask, -1), [1,1,1,1,4])
+                iou_mask_regression = tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 4])
                 masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
 
                 regression_loss_per_sample = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
