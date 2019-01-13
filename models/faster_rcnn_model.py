@@ -117,6 +117,9 @@ class FasterRcnnModel(BaseModel):
                     with tf.name_scope('sample'):
                         # counting the number of positive samples.
                         # if there are zero, then  we are in a "no_boats" batch image and sample consequently
+                        # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
+                        # the latter gives us the sum of the ground truth per image
+                        # if the sum is positive, then there are boats in the image and we want to sample some
                         n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
                                                      lambda: self.config.n_positive_samples,
                                                      lambda: 0)
@@ -124,19 +127,18 @@ class FasterRcnnModel(BaseModel):
                                                      lambda: self.config.n_negative_samples,
                                                      lambda: self.config.n_negative_samples_when_no_boats)
                         # sampling
-                        # note that this code will break if there are no ones's in the matrix
+                        # note that atm pos_sample applies the same sampling over the whole batch
+                        # refer to utils for the function
                         pos_sample = tf.py_func(np_sample, [pos_labels, 1, n_positive_samples], tf.float32)
+                        pos_labels = pos_labels * pos_sample
+                        neg_sample = tf.py_func(np_sample, [neg_labels, -1, n_negative_samples], tf.float32)
+                        neg_labels = neg_labels * neg_sample
+
                         if self.config.debug:
                             print("pos_sample.shape", pos_sample.shape)
-                        pos_labels = tf.cast(pos_labels, tf.float32) * pos_sample
-                        if self.config.debug:
                             print("pos_mask.shape", pos_labels.shape)
-                        neg_sample = tf.py_func(np_sample, [neg_labels, -1, n_negative_samples], tf.float32)
-                        neg_labels = tf.cast(neg_labels, tf.float32) * neg_sample
 
                     pos_mask.append(tf.cast(pos_labels, tf.float32))
-                    # neg_mask.append(tf.cast(neg_labels, tf.float32))
-                    # for now this only covers the
 
                     iou_mask_anchor = pos_labels + neg_labels
                     # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
