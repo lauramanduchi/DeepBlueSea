@@ -13,6 +13,7 @@
   "labels_file": "data/labels/boxes_v2.csv",
   "iou_positive_threshold": 0.5,
   "iou_negative_threshold": 0.1,
+  "img_wo_boats_ratio": 0.5,
   "n_positive_samples": 100,
   "n_negative_samples": 50,
   "n_negative_samples_when_no_boats": 50,
