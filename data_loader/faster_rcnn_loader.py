@@ -46,16 +46,19 @@ class DataGenerator:
         self.input_pos = list(some_boats[pos_indices])
         self.input_neg = list(no_boats[neg_indices])
 
-    def next_batch(self, batch_size):
-        idx_pos = np.random.choice(len(self.input_pos),
-                                   round(batch_size * (1 - self.config.img_wo_boats_ratio)))
-        sub_input_pos = [self.input_pos[i] for i in idx_pos]
-        idx_neg = np.random.choice(len(self.input_neg),
-                                   round(batch_size * self.config.img_wo_boats_ratio))
-        sub_input_neg = [self.input_neg[i] for i in idx_neg]
-        sub_input = sub_input_pos + sub_input_neg
-        random.shuffle(sub_input)
+        self.i = 0
 
+    def next_batch(self, batch_size):
+
+        if self.i % 2:
+            idx_pos = np.random.choice(len(self.input_pos),
+                                       round(batch_size * (1 - self.config.img_wo_boats_ratio)))
+            sub_input = [self.input_pos[i] for i in idx_pos]
+        else:
+            idx_neg = np.random.choice(len(self.input_neg),
+                                       round(batch_size * self.config.img_wo_boats_ratio))
+            sub_input = [self.input_neg[i] for i in idx_neg]
+        self.i += 1
         filenames = [self.config.training_data_path + x for x in sub_input]
         input = self.read_images(filenames)
 

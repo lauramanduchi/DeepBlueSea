@@ -112,17 +112,19 @@ class FasterRcnnModel(BaseModel):
                                                     self.config.iou_positive_threshold), tf.float32)
                     neg_labels = tf.cast(tf.less(max_iou_over_ground_truth,
                                                  self.config.iou_negative_threshold), tf.float32)
-
+                    if self.config.debug:
+                        print("pos_labels", pos_labels.shape)
                     with tf.name_scope('sample'):
                         # counting the number of positive samples.
                         # if there are zero, then  we are in a "no_boats" batch image and sample consequently
-                        n_positive_samples = tf.cond(tf.reduce_sum(pos_labels) > 0,
+                        n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
                                                      lambda: self.config.n_positive_samples,
                                                      lambda: 0)
-                        n_negative_samples = tf.cond(tf.reduce_sum(pos_labels) > 0,
+                        n_negative_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
                                                      lambda: self.config.n_negative_samples,
                                                      lambda: self.config.n_negative_samples_when_no_boats)
                         # sampling
+                        # note that this code will break if there are no ones's in the matrix
                         pos_sample = tf.py_func(np_sample, [pos_labels, 1, n_positive_samples], tf.float32)
                         if self.config.debug:
                             print("pos_sample.shape", pos_sample.shape)
