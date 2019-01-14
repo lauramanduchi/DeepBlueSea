@@ -290,11 +290,13 @@ class FasterRcnnModel(BaseModel):
                     t_y = (self.reg_scores[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
                     t_y_star = (self.y_reg_gt[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
                     # t_w = log(w_predict / w_anchor)
-                    t_w = tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
                     t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
+                    t_w = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2]),
+                                     tf.constant(-100000, shape=tf.shape(t_w_star)))
                     # t_h = log(h_predict / h_anchor)
-                    t_h = tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
                     t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
+                    t_h = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3]),
+                                     tf.constant(-100000, shape=tf.shape(t_x)))
                     y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
                     y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
 
