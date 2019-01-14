@@ -63,13 +63,10 @@ class FasterRcnnModel(BaseModel):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
                 y_class = []
                 selected_boat_index = []
-<<<<<<< HEAD
                 iou_mask = []
                 iou_average_for_summary = []
-=======
                 pos_mask = []
                 neg_mask = []
->>>>>>> 87e77cce9f69533c4b4531fe7f415db998f1262c
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
