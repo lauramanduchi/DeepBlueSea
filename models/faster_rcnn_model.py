@@ -292,11 +292,13 @@ class FasterRcnnModel(BaseModel):
                     # t_w = log(w_predict / w_anchor)
                     t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
                     t_w = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2]),
-                                     tf.constant(-100000, shape=tf.shape(t_w_star)))
+                                     tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
+                    # tf.constant(-100000, shape=tf.shape(t_w_star)))
                     # t_h = log(h_predict / h_anchor)
                     t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
                     t_h = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3]),
-                                     tf.constant(-100000, shape=tf.shape(t_x)))
+                                     tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
+                    #tf.constant(-100000, shape=tf.shape(t_x)))
                     y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
                     y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
 
