@@ -32,7 +32,7 @@ class FasterRcnnModel(BaseModel):
 
             # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
-                anchor_shapes = [(11, 11), (21, 21), (31, 31), (5, 11), (11, 21), (21, 31), (11, 5), (21, 11), (31, 21)]
+                anchor_shapes = [(21,21), (21, 41), (41,21), (41, 81), (81, 41), (51,51), (151,81), (81, 151), (101,101), (201,201)]
                 n_anchors = len(anchor_shapes)
                 y_anchors = np.zeros((1, 768, 768, n_anchors, 4))
                 x = np.arange(768)
@@ -63,8 +63,13 @@ class FasterRcnnModel(BaseModel):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
                 y_class = []
                 selected_boat_index = []
+<<<<<<< HEAD
                 iou_mask = []
                 iou_average_for_summary = []
+=======
+                pos_mask = []
+                neg_mask = []
+>>>>>>> 87e77cce9f69533c4b4531fe7f415db998f1262c
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
@@ -104,12 +109,20 @@ class FasterRcnnModel(BaseModel):
                     # below a lower threshold and so here we create a mask which will be 1 for
                     # all such iou scores and 0 for those inside the threshold so we can
                     # use it as a weighting for the losses
-                    iou_mask_anchor = tf.logical_or(
-                        tf.greater(max_iou_over_ground_truth, self.config.iou_positive_threshold),
-                        tf.less(max_iou_over_ground_truth, self.config.iou_negative_threshold)
-                    )
+                    pos_labels = tf.cast(tf.greater(max_iou_over_ground_truth,
+                                                    self.config.iou_positive_threshold), tf.float32)
+                    neg_labels = tf.cast(tf.less(max_iou_over_ground_truth,
+                                                 self.config.iou_negative_threshold), tf.float32)
+                    if self.config.debug:
+                        print("pos_labels", pos_labels.shape)
+
+
+                    pos_mask.append(pos_labels)
+                    neg_mask.append(neg_labels)
+
+                    #iou_mask_anchor = pos_labels + neg_labels
                     # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
-                    iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
+                    #iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
 
 
                     y_class.append(labels)
@@ -118,12 +131,16 @@ class FasterRcnnModel(BaseModel):
                 # Stack all the anchors together in the end this is then of shape [batch, 768, 768, n_anchor]
                 self.y_class = tf.stack(y_class, axis=-1)
                 selected_boat_index = tf.stack(selected_boat_index, axis=-1)
+
+                # Stack IOU masks
+                temp_pos_mask = tf.stack(pos_mask, -1)
+                temp_neg_mask = tf.stack(neg_mask, -1)
+                #iou_mask = tf.stack(iou_mask, -1)
+
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
                     print('selected_boat_index', selected_boat_index.shape)
-
-                # Stack IOU masks
-                iou_mask = tf.stack(iou_mask, -1)
+                    print('temp_pos_mask', temp_pos_mask.shape)
 
                 # Stack iou_average_for_summary
                 iou_average_for_summary = tf.stack(iou_average_for_summary, -1)
@@ -146,10 +163,48 @@ class FasterRcnnModel(BaseModel):
 
                     self.y_reg_gt = tf.stack(y_reg_gt, -2)
 
-
             # Some summaries
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
             tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
+
+            with tf.name_scope('sample'):
+                # counting the number of positive samples.
+                # if there are zero, then  we are in a "no_boats" batch image and sample consequently
+                # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
+                # the latter gives us the sum of the ground truth per image
+                # if the sum is positive, then there are boats in the image and we want to sample some
+                # TODO: fix :)
+                class_mask = []
+                pos_mask = []
+
+                for i in range(self.config.batch_size):
+                    n_positive_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
+                                             lambda: self.config.n_positive_samples,
+                                             lambda: 0)
+                    n_negative_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
+                                             lambda: self.config.n_negative_samples,
+                                             lambda: self.config.n_negative_samples_when_no_boats)
+                    # sampling
+                    # note that atm pos_sample applies the same sampling over the whole batch
+                    # refer to utils for the function
+                    # TODO: fix :)
+                    pos_sample = tf.py_func(np_sample, [temp_pos_mask[i], 1, n_positive_samples], tf.float64)
+                    pos_sample = tf.cast(pos_sample, tf.float32)
+                    #pos_mask = temp_pos_mask * pos_sample
+                    neg_sample = tf.py_func(np_sample, [temp_neg_mask[i], 1, n_negative_samples], tf.float64)
+                    neg_sample = tf.cast(neg_sample, tf.float32)
+                    #neg_mask = temp_neg_mask * neg_sample
+
+                    if self.config.debug:
+                       print("pos_sample.shape", pos_sample.shape)
+                       print("temp_pos_mask.shape", temp_pos_mask.shape)
+                    temp_class_mask = pos_sample + neg_sample
+                    class_mask.append(temp_class_mask)
+                    pos_mask.append(pos_sample)
+
+                class_mask = tf.stack(class_mask, 0)
+                pos_mask = tf.stack(pos_mask, 0)
+
 
 
         with tf.name_scope('model'):
@@ -227,8 +282,8 @@ class FasterRcnnModel(BaseModel):
                 sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
                                                                      logits=self.class_scores)
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
-                print('IOU Mask Shape', iou_mask.shape)
-                masked_signoid_ce = tf.multiply(iou_mask, sigmoid_ce)
+                print('IOU Mask Shape', class_mask.shape)
+                masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 
                 classification_loss_per_sample = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
                 classification_loss = tf.reduce_mean(classification_loss_per_sample)
@@ -246,20 +301,18 @@ class FasterRcnnModel(BaseModel):
                     t_y = (self.reg_scores[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
                     t_y_star = (self.y_reg_gt[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / reg_anchors[:, :, :, :, 3]
                     # t_w = log(w_predict / w_anchor)
-                    t_w = tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
                     t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2])
+                    t_w = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2]),
+                                     tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
+                    # tf.constant(-100000, shape=tf.shape(t_w_star)))
                     # t_h = log(h_predict / h_anchor)
-                    t_h = tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
                     t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3])
+                    t_h = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3]),
+                                     tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
+                    #tf.constant(-100000, shape=tf.shape(t_x)))
                     y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
                     y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
-                    if self.config.debug == 1:
-                        print("y_reg_loss_gt small", y_reg_loss_gt.shape)
-                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
-                    if self.config.debug == 1:
-                        print("y_reg_loss_gt large", y_reg_loss_gt.shape)
-                    if self.config.debug == 1:
-                        print(t_x.shape, t_w.shape)
+
 
                 regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
                                                                          predictions=y_reg_loss_pred,
@@ -268,6 +321,11 @@ class FasterRcnnModel(BaseModel):
                 # Remember that we only look at positive (> upper iou thresh) boxes for regression
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
                 iou_mask_regression = tf.tile(tf.expand_dims(self.y_class, -1), [1,1,1,1,4])
+
+                # Remember that we only look at positive (> upper iou thresh) boxes
+                # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
+                iou_mask_regression = tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 4])
+
                 masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
 
                 # For summary, summarise the regression loss for each of the 4 coordinates seperately to see

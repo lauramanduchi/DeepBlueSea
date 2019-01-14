@@ -15,8 +15,7 @@ from utils.utils import get_args
 
 
 def main():
-
-    config = process_config("../configs/faster_rcnn.json")
+    config = process_config("configs/faster_rcnn.json")
     print("we're in business")
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])
@@ -35,7 +34,8 @@ def main():
     model.load(sess)
     # print("Model exists already, if you want to retrain it delete it first!")
     #here you train your model
-    trainer.train()
+    if config.debug == 1:
+        trainer.train()
 
     #TESTING
     #load model if exists

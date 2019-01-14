@@ -193,3 +193,17 @@ def select_with_matrix_tf(tensor, indexer, batch_size):
     ]
     index = tf.stack(index_list, -1)
     return tf.gather_nd(tensor, index)
+
+
+def np_sample(labels, label=1, n_samples=180):
+    mask = np.zeros(labels.shape, dtype = float)
+    # if we have np.sum(labels) = 0 we should have n_sample=0 as well
+    #if n_samples > 0 & np.sum(labels) > 0:
+    if n_samples > 0:
+        idx1 = np.where(labels == label)
+        idx1 = np.asarray(idx1)
+        index = np.random.randint(idx1.shape[1], size=(n_samples))
+        a = idx1[:, index]
+        mask[a[0], a[1], a[2]] = label
+        mask.astype(float)
+    return mask

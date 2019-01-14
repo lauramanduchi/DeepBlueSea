@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from matplotlib import image as mpimg
+import random
 
 
 
@@ -14,9 +15,19 @@ class DataGenerator:
         path = self.config.training_data_path
         self.y_raw = pd.read_csv(self.config.labels_file)
 
+        # for sampling :
+        no_boats = np.unique(np.array(self.y_raw[self.y_raw.width == 0].ImageId))
+        some_boats = np.unique(np.array(self.y_raw[self.y_raw.width > 0].ImageId))
+
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
         if config.debug == 1:
-            files = files[0:2]
+            files = files[0:3]
+            print(files)
+            self.input = files
+            self.input_dev = files
+        else:
+            self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+
         #filelist = [[path + x] for x in files[0:2]] # remember to delete [0:2] !!
 
         #files = np.asarray(files)
@@ -33,11 +44,41 @@ class DataGenerator:
 
         #self.dataset_iterator = dataset.make_one_shot_iterator()
 
-        self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+        #self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+
+        # sampling indices:
+        neg_indices = np.isin(no_boats, self.input)
+        pos_indices = np.isin(some_boats, self.input)
+        self.input_pos = list(some_boats[pos_indices])
+        self.input_neg = list(no_boats[neg_indices])
+
+        # self.i = 0
 
     def next_batch(self, batch_size):
-        idx = np.random.choice(len(self.input), batch_size)
-        sub_input = [self.input[i] for i in idx]
+        idx_pos = np.random.choice(len(self.input_pos),
+                                   (round(batch_size * (1 - self.config.img_wo_boats_ratio))))
+        print("**********************\n")
+        print(idx_pos)
+        print("\n**********************")
+        sub_input_pos = [self.input_pos[i] for i in idx_pos]
+        #print(batch_size * self.config.img_wo_boats_ratio, round(batch_size * self.config.img_wo_boats_ratio))
+        print(len(self.input_neg))
+        idx_neg = np.random.choice(len(self.input_neg),
+                                   round(batch_size * self.config.img_wo_boats_ratio))
+        sub_input_neg = [self.input_neg[i] for i in idx_neg]
+        sub_input = sub_input_pos + sub_input_neg
+        random.shuffle(sub_input)
+
+        # if self.i % 2:
+        #    idx_pos = np.random.choice(len(self.input_pos),
+        #                               round(batch_size * (1 - self.config.img_wo_boats_ratio)))
+        #    sub_input = [self.input_pos[i] for i in idx_pos]
+        # else:
+        #    idx_neg = np.random.choice(len(self.input_neg),
+        #                               round(batch_size * self.config.img_wo_boats_ratio))
+        #    sub_input = [self.input_neg[i] for i in idx_neg]
+        #self.i += 1
+
         filenames = [self.config.training_data_path + x for x in sub_input]
         input = self.read_images(filenames)
 
