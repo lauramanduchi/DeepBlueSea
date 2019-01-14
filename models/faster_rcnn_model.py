@@ -64,7 +64,7 @@ class FasterRcnnModel(BaseModel):
                 y_class = []
                 selected_boat_index = []
                 pos_mask = []
-                # neg_mask = []
+                neg_mask = []
                 iou_mask = []
                 n_box = tf.shape(self.y_map)[-1]
 
@@ -114,37 +114,14 @@ class FasterRcnnModel(BaseModel):
                                                  self.config.iou_negative_threshold), tf.float32)
                     if self.config.debug:
                         print("pos_labels", pos_labels.shape)
-                    with tf.name_scope('sample'):
-                        # counting the number of positive samples.
-                        # if there are zero, then  we are in a "no_boats" batch image and sample consequently
-                        # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
-                        # the latter gives us the sum of the ground truth per image
-                        # if the sum is positive, then there are boats in the image and we want to sample some
-                        # TODO: fix :)
-                        n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
-                                                     lambda: self.config.n_positive_samples,
-                                                     lambda: 0)
-                        n_negative_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
-                                                     lambda: self.config.n_negative_samples,
-                                                     lambda: self.config.n_negative_samples_when_no_boats)
-                        # sampling
-                        # note that atm pos_sample applies the same sampling over the whole batch
-                        # refer to utils for the function
-                        # TODO: fix :)
-                        pos_sample = tf.py_func(np_sample, [pos_labels, 1, n_positive_samples], tf.float32)
-                        pos_labels = pos_labels * pos_sample
-                        neg_sample = tf.py_func(np_sample, [neg_labels, -1, n_negative_samples], tf.float32)
-                        neg_labels = neg_labels * neg_sample
 
-                        if self.config.debug:
-                            print("pos_sample.shape", pos_sample.shape)
-                            print("pos_mask.shape", pos_labels.shape)
 
-                    pos_mask.append(tf.cast(pos_labels, tf.float32))
+                    pos_mask.append(pos_labels)
+                    neg_mask.append(neg_labels)
 
-                    iou_mask_anchor = pos_labels + neg_labels
+                    #iou_mask_anchor = pos_labels + neg_labels
                     # iou_mask shape: [batch, 768, 768, n_proposal_boxes]
-                    iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
+                    #iou_mask.append(tf.cast(iou_mask_anchor, tf.float32))
 
                     y_class.append(labels)
                     selected_boat_index.append(argmax_iou_over_ground_truth)
@@ -155,8 +132,8 @@ class FasterRcnnModel(BaseModel):
 
                 # Stack IOU masks
                 pos_mask = tf.stack(pos_mask, -1)
-                #neg_mask = tf.stack(neg_mask, -1)
-                iou_mask = tf.stack(iou_mask, -1)
+                neg_mask = tf.stack(neg_mask, -1)
+                #iou_mask = tf.stack(iou_mask, -1)
 
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
@@ -180,6 +157,32 @@ class FasterRcnnModel(BaseModel):
             tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
             tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
 
+            with tf.name_scope('sample'):
+                # counting the number of positive samples.
+                # if there are zero, then  we are in a "no_boats" batch image and sample consequently
+                # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
+                # the latter gives us the sum of the ground truth per image
+                # if the sum is positive, then there are boats in the image and we want to sample some
+                # TODO: fix :)
+                n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
+                                             lambda: self.config.n_positive_samples,
+                                             lambda: 0)
+                n_negative_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
+                                             lambda: self.config.n_negative_samples,
+                                             lambda: self.config.n_negative_samples_when_no_boats)
+                # sampling
+                # note that atm pos_sample applies the same sampling over the whole batch
+                # refer to utils for the function
+                # TODO: fix :)
+                pos_sample = tf.py_func(np_sample, [pos_mask, 1, n_positive_samples], tf.float32)
+                pos_mask = pos_mask * pos_sample
+                neg_sample = tf.py_func(np_sample, [neg_mask, -1, n_negative_samples], tf.float32)
+                neg_mask = neg_mask * neg_sample
+
+                if self.config.debug:
+                    print("pos_sample.shape", pos_sample.shape)
+                    print("pos_mask.shape", pos_mask.shape)
+                iou_mask = pos_mask + neg_mask
 
         with tf.name_scope('model'):
             with tf.name_scope('feature_maps'):
