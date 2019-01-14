@@ -8,7 +8,7 @@
   "max_to_keep": 1,
   "window_size": 3,
   "sliding_hidden_layer_size": 64,
-  "n_proposal_boxes": 9,
+  "n_proposal_boxes": 10,
   "training_data_path": "data/train_sample/",
   "labels_file": "data/labels/boxes_v2.csv",
   "iou_positive_threshold": 0.5,

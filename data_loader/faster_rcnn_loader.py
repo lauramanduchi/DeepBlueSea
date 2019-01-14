@@ -21,7 +21,13 @@ class DataGenerator:
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
         if config.debug == 1:
-            files = files[0:2]
+            files = files[0:3]
+            print(files)
+            self.input = files
+            self.input_dev = files
+        else:
+            self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+
         #filelist = [[path + x] for x in files[0:2]] # remember to delete [0:2] !!
 
         #files = np.asarray(files)
@@ -38,7 +44,7 @@ class DataGenerator:
 
         #self.dataset_iterator = dataset.make_one_shot_iterator()
 
-        self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+        #self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
 
         # sampling indices:
         neg_indices = np.isin(no_boats, self.input)
@@ -50,8 +56,13 @@ class DataGenerator:
 
     def next_batch(self, batch_size):
         idx_pos = np.random.choice(len(self.input_pos),
-                                   round(batch_size * (1 - self.config.img_wo_boats_ratio)))
+                                   (round(batch_size * (1 - self.config.img_wo_boats_ratio))))
+        print("**********************\n")
+        print(idx_pos)
+        print("\n**********************")
         sub_input_pos = [self.input_pos[i] for i in idx_pos]
+        #print(batch_size * self.config.img_wo_boats_ratio, round(batch_size * self.config.img_wo_boats_ratio))
+        print(len(self.input_neg))
         idx_neg = np.random.choice(len(self.input_neg),
                                    round(batch_size * self.config.img_wo_boats_ratio))
         sub_input_neg = [self.input_neg[i] for i in idx_neg]

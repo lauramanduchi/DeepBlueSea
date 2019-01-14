@@ -32,7 +32,7 @@ class FasterRcnnModel(BaseModel):
 
             # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
-                anchor_shapes = [(11, 11), (21, 21), (31, 31), (5, 11), (11, 21), (21, 31), (11, 5), (21, 11), (31, 21)]
+                anchor_shapes = [(21,21), (21, 41), (41,21), (41, 81), (81, 41), (51,51), (151,81), (81, 151), (101,101), (201,201)]
                 n_anchors = len(anchor_shapes)
                 y_anchors = np.zeros((1, 768, 768, n_anchors, 4))
                 x = np.arange(768)
@@ -65,7 +65,6 @@ class FasterRcnnModel(BaseModel):
                 selected_boat_index = []
                 pos_mask = []
                 neg_mask = []
-                iou_mask = []
                 n_box = tf.shape(self.y_map)[-1]
 
                 for i, anchor_shape in enumerate(anchor_shapes):
@@ -131,14 +130,14 @@ class FasterRcnnModel(BaseModel):
                 selected_boat_index = tf.stack(selected_boat_index, axis=-1)
 
                 # Stack IOU masks
-                pos_mask = tf.stack(pos_mask, -1)
-                neg_mask = tf.stack(neg_mask, -1)
+                temp_pos_mask = tf.stack(pos_mask, -1)
+                temp_neg_mask = tf.stack(neg_mask, -1)
                 #iou_mask = tf.stack(iou_mask, -1)
 
                 if self.config.debug == 1:
                     print('self.y_class.shape', self.y_class.shape)
                     print('selected_boat_index', selected_boat_index.shape)
-                    print('pos_mask', pos_mask.shape)
+                    print('temp_pos_mask', temp_pos_mask.shape)
 
                 # Filter y_reg by which boxes are positive
                 y_reg_gt = []
@@ -164,25 +163,38 @@ class FasterRcnnModel(BaseModel):
                 # the latter gives us the sum of the ground truth per image
                 # if the sum is positive, then there are boats in the image and we want to sample some
                 # TODO: fix :)
-                n_positive_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
+                class_mask = []
+                pos_mask = []
+
+                for i in range(self.config.batch_size):
+                    n_positive_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
                                              lambda: self.config.n_positive_samples,
                                              lambda: 0)
-                n_negative_samples = tf.cond(tf.reduce_sum(self.y_map) > 0,
+                    n_negative_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
                                              lambda: self.config.n_negative_samples,
                                              lambda: self.config.n_negative_samples_when_no_boats)
-                # sampling
-                # note that atm pos_sample applies the same sampling over the whole batch
-                # refer to utils for the function
-                # TODO: fix :)
-                pos_sample = tf.py_func(np_sample, [pos_mask, 1, n_positive_samples], tf.float32)
-                pos_mask = pos_mask * pos_sample
-                neg_sample = tf.py_func(np_sample, [neg_mask, -1, n_negative_samples], tf.float32)
-                neg_mask = neg_mask * neg_sample
+                    # sampling
+                    # note that atm pos_sample applies the same sampling over the whole batch
+                    # refer to utils for the function
+                    # TODO: fix :)
+                    pos_sample = tf.py_func(np_sample, [temp_pos_mask[i], 1, n_positive_samples], tf.float64)
+                    pos_sample = tf.cast(pos_sample, tf.float32)
+                    #pos_mask = temp_pos_mask * pos_sample
+                    neg_sample = tf.py_func(np_sample, [temp_neg_mask[i], 1, n_negative_samples], tf.float64)
+                    neg_sample = tf.cast(neg_sample, tf.float32)
+                    #neg_mask = temp_neg_mask * neg_sample
 
-                if self.config.debug:
-                    print("pos_sample.shape", pos_sample.shape)
-                    print("pos_mask.shape", pos_mask.shape)
-                iou_mask = pos_mask + neg_mask
+                    if self.config.debug:
+                       print("pos_sample.shape", pos_sample.shape)
+                       print("temp_pos_mask.shape", temp_pos_mask.shape)
+                    temp_class_mask = pos_sample + neg_sample
+                    class_mask.append(temp_class_mask)
+                    pos_mask.append(pos_sample)
+
+                class_mask = tf.stack(class_mask, 0)
+                pos_mask = tf.stack(pos_mask, 0)
+
+
 
         with tf.name_scope('model'):
             with tf.name_scope('feature_maps'):
@@ -259,8 +271,8 @@ class FasterRcnnModel(BaseModel):
                 sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
                                                                      logits=self.class_scores)
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
-                print('IOU Mask Shape', iou_mask.shape)
-                masked_signoid_ce = tf.multiply(iou_mask, sigmoid_ce)
+                print('IOU Mask Shape', class_mask.shape)
+                masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 
                 classification_loss_per_sample = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
                 classification_loss = tf.reduce_mean(classification_loss_per_sample)
