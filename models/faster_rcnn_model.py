@@ -169,10 +169,12 @@ class FasterRcnnModel(BaseModel):
                 pos_mask = []
 
                 for i in range(self.config.batch_size):
-                    n_positive_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
+                    sliced_temp_pos_mask = tf.slice(temp_pos_mask,begin=[i,0,0,0],size=[1,-1,-1,-1])
+                    summed_pos_mask = tf.reduce_sum(sliced_temp_pos_mask)
+                    n_positive_samples = tf.cond(summed_pos_mask > 0,
                                              lambda: self.config.n_positive_samples,
                                              lambda: 0)
-                    n_negative_samples = tf.cond(tf.reduce_sum(temp_pos_mask[i]) > 0,
+                    n_negative_samples = tf.cond(summed_pos_mask > 0,
                                              lambda: self.config.n_negative_samples,
                                              lambda: self.config.n_negative_samples_when_no_boats)
                     # sampling
