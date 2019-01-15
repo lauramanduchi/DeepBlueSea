@@ -34,8 +34,8 @@ def main():
     model.load(sess)
     # print("Model exists already, if you want to retrain it delete it first!")
     #here you train your model
-    if config.debug == 1:
-        trainer.train()
+
+    trainer.train()
 
     #TESTING
     #load model if exists
