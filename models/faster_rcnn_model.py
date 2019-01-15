@@ -52,12 +52,6 @@ class FasterRcnnModel(BaseModel):
                 if self.config.debug == 1:
                     print("reg_anchors", reg_anchors.shape)
                 # self.handle = tf.placeholder(tf.string, shape=[])
-            #iterator = tf.data.Iterator.from_string_handle(self.handle, data_structure, data_shape)
-
-            #next_element = iterator.get_next()
-
-            #self.x = next_element['image']
-            #self.y_map = next_element['y_map']
 
             with tf.name_scope('expand_y'):
                 # Here is where we unwrap the y masks to be IOU maps and then maps that match the loss.
@@ -258,6 +252,11 @@ class FasterRcnnModel(BaseModel):
                                                                num_filters=self.config.n_proposal_boxes,
                                                                stride=1,
                                                                data_format="NHWC")
+
+                        tf.summary.image(name='classification_scores',
+                                         tensor=tf.reduce_sum(self.class_scores, -1, keepdims=True),
+                                         max_outputs=1)
+
                     with tf.name_scope('regression_layer'):
                         # reg_outputs: [batch_size, 768, 768, 4*self.config.n_proposal_boxes]
                         reg_outputs = create_convolution(input=window_outputs,
@@ -279,7 +278,6 @@ class FasterRcnnModel(BaseModel):
                 sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
                                                                      logits=self.class_scores)
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
-                print('IOU Mask Shape', class_mask.shape)
                 masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 
                 classification_loss_per_sample = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
@@ -319,12 +317,6 @@ class FasterRcnnModel(BaseModel):
                                                                          predictions=y_reg_loss_pred,
                                                                          reduction=tf.losses.Reduction.NONE)
 
-                # TODO: better solution
-                # Replace nans with 0s
-                regression_loss_per_pixel = tf.where(tf.is_nan(regression_loss_per_pixel),
-                                                     tf.zeros_like(regression_loss_per_pixel),
-                                                     regression_loss_per_pixel);
-
                 # Remember that we only look at positive (> upper iou thresh) boxes for regression
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
                 iou_mask_regression = tf.tile(tf.expand_dims(self.y_class, -1), [1,1,1,1,4])
@@ -334,6 +326,12 @@ class FasterRcnnModel(BaseModel):
                 iou_mask_regression = tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 4])
 
                 masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
+
+                # TODO: better solution
+                # Replace nans with 0s
+                masked_regression_loss_per_pixel = tf.where(tf.is_nan(masked_regression_loss_per_pixel),
+                                                            tf.zeros_like(masked_regression_loss_per_pixel),
+                                                            masked_regression_loss_per_pixel)
 
                 # For summary, summarise the regression loss for each of the 4 coordinates seperately to see
                 # if any particular one is under peforming.
@@ -351,10 +349,12 @@ class FasterRcnnModel(BaseModel):
                 regression_loss_per_sample = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
                 regression_loss = tf.reduce_mean(regression_loss_per_sample)
 
-                tf.summary.scalar(name='classification_loss', tensor=regression_loss)
+                tf.summary.scalar(name='classification_loss', tensor=classification_loss)
                 tf.summary.scalar(name='regression_loss', tensor=regression_loss)
 
                 self.loss = classification_loss + regression_loss
+
+                tf.summary.scalar(name='total_loss', tensor=self.loss)
 
 
         with tf.name_scope('optimizer'):
