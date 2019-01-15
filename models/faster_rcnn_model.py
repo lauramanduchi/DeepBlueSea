@@ -277,8 +277,9 @@ class FasterRcnnModel(BaseModel):
 
             with tf.name_scope('loss'):
 
+                epsilon = 0.001
                 sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
-                                                                     logits=self.class_scores)
+                                                                     logits=self.class_scores + epsilon)
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
                 masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 
@@ -295,33 +296,26 @@ class FasterRcnnModel(BaseModel):
                     epsilon = 0.001
                     t_x = (self.reg_scores[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / (reg_anchors[:, :, :, :, 2] + epsilon)
                     t_x_star = (self.y_reg_gt[:, :, :, :, 0] - reg_anchors[:, :, :, :, 0]) / (reg_anchors[:, :, :, :, 2] + epsilon)
-                    # t_y = (y_predict - y_anchor)/ h_anchor
+
                     t_y = (self.reg_scores[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / (reg_anchors[:, :, :, :, 3] + epsilon)
                     t_y_star = (self.y_reg_gt[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / (reg_anchors[:, :, :, :, 3] + epsilon)
-                    # t_w = log(w_predict / w_anchor)
-                    t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / (reg_anchors[:, :, :, :, 2]+ epsilon))
-                    # t_w = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 2] / reg_anchors[:, :, :, :, 2]),
-                    #                  tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
-                    t_w = tf.log(self.reg_scores[:, :, :, :, 2] / (reg_anchors[:, :, :, :, 2] + epsilon))
-                    # tf.constant(-100000, shape=tf.shape(t_w_star)))
-                    # t_h = log(h_predict / h_anchor)
+
+                    reg_adj_1 = tf.maximum(self.reg_scores[:, :, :, :, 2], epsilon)
+                    t_w = tf.log(reg_adj_1 / (reg_anchors[:, :, :, :, 2] + epsilon))
+                    t_w_star = tf.log(self.y_reg_gt[:, :, :, :, 2] / (reg_anchors[:, :, :, :, 2] + epsilon))
+
+                    reg_adj_2 = tf.maximum(self.reg_scores[:, :, :, :, 3], epsilon)
+                    t_h = tf.log(reg_adj_2 / (reg_anchors[:, :, :, :, 3] + epsilon))
                     t_h_star = tf.log(self.y_reg_gt[:, :, :, :, 3] / (reg_anchors[:, :, :, :, 3] + epsilon))
-                    # t_h = tf.maximum(tf.log(self.reg_scores[:, :, :, :, 3] / reg_anchors[:, :, :, :, 3]),
-                    #                  tf.cast(tf.fill(dims=tf.shape(t_w_star), value=-100000), dtype=tf.float32))
-                    t_h = tf.log(self.reg_scores[:, :, :, :, 3] / (reg_anchors[:, :, :, :, 3] + epsilon))
 
-                    #tf.constant(-100000, shape=tf.shape(t_x)))
-                    y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=4)
-                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=4)
+                    y_reg_loss_pred = tf.stack([t_x, t_y, t_w, t_h], axis=-1)
+                    y_reg_loss_gt = tf.stack([t_x_star, t_y_star, t_w_star, t_h_star], axis=-1)
 
+                regression_loss_per_pixel = tf.losses.huber_loss(labels=y_reg_loss_gt,
+                                                                 predictions=y_reg_loss_pred,
+                                                                 delta=self.config.delta,
+                                                                 reduction=tf.losses.Reduction.NONE)
 
-                regression_loss_per_pixel = tf.losses.mean_squared_error(labels=y_reg_loss_gt,
-                                                                         predictions=y_reg_loss_pred,
-                                                                         reduction=tf.losses.Reduction.NONE)
-
-                # Remember that we only look at positive (> upper iou thresh) boxes for regression
-                # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
-                iou_mask_regression = tf.tile(tf.expand_dims(self.y_class, -1), [1,1,1,1,4])
 
                 # Remember that we only look at positive (> upper iou thresh) boxes
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
