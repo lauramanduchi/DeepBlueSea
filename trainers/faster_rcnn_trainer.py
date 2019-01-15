@@ -26,10 +26,10 @@ class FasterRcnnTrainer(BaseTrain):
             self.logger.train_summary_writer.add_summary(summaries, global_step=cur_it)
 
             if cur_it % self.config.evaluate_every == 0:
-                print("\nEvaluation:")
-                loss, acc = self.dev_step()
+                print("\nEVALUATION")
+                loss, summaries = self.dev_step()
                 dev_losses.append(loss)
-                print("")
+                print("\nEvaluation: {}".format(loss))
 
         loss = np.mean(losses)
         dev_loss = np.mean(dev_losses)
@@ -70,7 +70,7 @@ class FasterRcnnTrainer(BaseTrain):
                      self.model.y_reg: batch_y_reg,
                      self.model.is_training: False}
 
-        _, loss, summaries = self.sess.run([self.model.train_step, self.model.loss, self.model.summaries],
+        loss, summaries = self.sess.run([self.model.loss, self.model.summaries],
                                            feed_dict=feed_dict)
         time_str = datetime.datetime.now().isoformat()
         step = self.model.global_step_tensor.eval(self.sess)
