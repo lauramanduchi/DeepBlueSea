@@ -203,7 +203,11 @@ class FasterRcnnModel(BaseModel):
         with tf.name_scope('model'):
             with tf.name_scope('feature_maps'):
 
-                layer_conv1 = create_convolutional_layer(input=self.x,
+                normalized_x = tf.cond(tf.math.greater(self.config.normalization, tf.constant(0)),
+                                             lambda: tf.map_fn(lambda frame: tf.image.per_image_standardization(frame), self.x),
+                                             lambda: self.x)
+
+                layer_conv1 = create_convolutional_layer(input=normalized_x,
                                                          num_input_channels=self.config.num_channels,
                                                          conv_filter_size=self.config.filter_size_conv1,
                                                          num_filters=self.config.num_filters_conv1,
@@ -217,13 +221,35 @@ class FasterRcnnModel(BaseModel):
                                                          maxpool=0,
                                                          name='conv_layer_2')
 
-                pool = tf.nn.max_pool(value=layer_conv2,
+                layer_conv3 = create_convolutional_layer(input=layer_conv2,
+                                                         num_input_channels=self.config.num_filters_conv2,
+                                                         conv_filter_size=self.config.filter_size_conv3,
+                                                         num_filters=self.config.num_filters_conv3,
+                                                         maxpool=0,
+                                                         name='conv_layer_3')
+
+                layer_conv4 = create_convolutional_layer(input=layer_conv3,
+                                                         num_input_channels=self.config.num_filters_conv3,
+                                                         conv_filter_size=self.config.filter_size_conv4,
+                                                         num_filters=self.config.num_filters_conv4,
+                                                         maxpool=0,
+                                                         name='conv_layer_4')
+
+                layer_conv5 = create_convolutional_layer(input=layer_conv4,
+                                                         num_input_channels=self.config.num_filters_conv4,
+                                                         conv_filter_size=self.config.filter_size_conv5,
+                                                         num_filters=self.config.num_filters_conv5,
+                                                         maxpool=0,
+                                                         name='conv_layer_5')
+
+
+                pool = tf.nn.max_pool(value=layer_conv5,
                                       ksize=[1, 2, 2, 1],
                                       strides=[1, 2, 2, 1],
                                       padding='SAME')
 
                 self.feature_maps = create_deconvolutional_layer(input=pool,
-                                                            num_filters=self.config.num_filters_conv2,
+                                                            num_filters=self.config.num_filters_conv5,
                                                             name='deconvolution',
                                                             upscale_factor=2)
 

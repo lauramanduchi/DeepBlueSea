@@ -15,7 +15,20 @@ from utils.utils import get_args
 
 
 def main():
-    config = process_config("configs/faster_rcnn.json")
+    #config = process_config("configs/faster_rcnn.json")
+
+    # capture the config path from the run arguments
+    # then process the json configuration file
+    # parse -c and put the wright config file ex. "-c configs/baseline.json"
+
+    try:
+        args = get_args()
+        config = process_config(args.config)
+
+    except:
+        print("missing or invalid arguments")
+        exit(0)
+
     print("we're in business")
     # create the experiments dirs
     create_dirs([config.summary_dir, config.checkpoint_dir])

@@ -57,9 +57,6 @@ class DataGenerator:
     def next_batch(self, batch_size):
         idx_pos = np.random.choice(len(self.input_pos),
                                    (round(batch_size * (1 - self.config.img_wo_boats_ratio))))
-        print("**********************\n")
-        print(idx_pos)
-        print("\n**********************")
         sub_input_pos = [self.input_pos[i] for i in idx_pos]
         #print(batch_size * self.config.img_wo_boats_ratio, round(batch_size * self.config.img_wo_boats_ratio))
         print(len(self.input_neg))
