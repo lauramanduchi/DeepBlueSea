@@ -155,8 +155,8 @@ class FasterRcnnModel(BaseModel):
                     self.y_reg_gt = tf.stack(y_reg_gt, -2)
 
             # Some summaries
-            tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
-            tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
+            #tf.summary.image(name='input_images', tensor=self.x, max_outputs=3)
+            #tf.summary.image(name='y_map', tensor=tf.reduce_sum(self.y_map, -1, keepdims=True), max_outputs=1)
 
             with tf.name_scope('sample'):
                 # counting the number of positive samples.
@@ -233,7 +233,7 @@ class FasterRcnnModel(BaseModel):
                 #                                                num_filters=self.config.num_features,
                 #                                                maxpool=0)
 
-                tf.summary.image(name='feature_maps', tensor=self.feature_maps[:,:,:,0:3], max_outputs=3)
+                #tf.summary.image(name='feature_maps', tensor=self.feature_maps[:,:,:,0:3], max_outputs=3)
 
             with tf.name_scope('region_proposal_network'):
 
@@ -255,9 +255,9 @@ class FasterRcnnModel(BaseModel):
                                                                stride=1,
                                                                data_format="NHWC")
 
-                        tf.summary.image(name='classification_scores',
-                                         tensor=tf.reduce_sum(self.class_scores, -1, keepdims=True),
-                                         max_outputs=1)
+                        # tf.summary.image(name='classification_scores',
+                        #                  tensor=tf.reduce_sum(self.class_scores, -1, keepdims=True),
+                        #                  max_outputs=1)
 
                     with tf.name_scope('regression_layer'):
                         # reg_outputs: [batch_size, 768, 768, 4*self.config.n_proposal_boxes]
