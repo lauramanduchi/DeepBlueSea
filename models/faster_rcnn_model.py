@@ -277,9 +277,11 @@ class FasterRcnnModel(BaseModel):
                         self.class_scores = create_convolution(input=window_outputs,
                                                                num_input_channels=self.config.sliding_hidden_layer_size,
                                                                conv_filter_size=1,
-                                                               num_filters=self.config.n_proposal_boxes,
+                                                               #num_filters=self.config.n_proposal_boxes,
+                                                               num_filters=self.config.n_proposal_boxes*2,
                                                                stride=1,
                                                                data_format="NHWC")
+
 
                         # tf.summary.image(name='classification_scores',
                         #                  tensor=tf.reduce_sum(self.class_scores, -1, keepdims=True),
@@ -304,8 +306,17 @@ class FasterRcnnModel(BaseModel):
             with tf.name_scope('loss'):
 
                 epsilon = 0.001
-                sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
-                                                                     logits=self.class_scores + epsilon)
+
+                #sigmoid_ce = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y_class,
+                #                                                     logits=self.class_scores + epsilon)
+                self.class_scores = tf.reshape(self.class_scores,
+                                               [self.config.batch_size, 768, 768, self.config.n_proposal_boxes, 2])
+
+                y_classes = tf.cast(self.y_class, tf.int32)
+
+                sigmoid_ce = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_classes,
+                                                                     logits=self.class_scores)
+
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
                 masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 

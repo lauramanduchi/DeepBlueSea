@@ -24,7 +24,7 @@
   "num_filters_conv2": 64,
   "num_features": 64,
   "val_split" : 0.2,
-  "evaluate_every": 100,
-  "debug": 0,
+  "evaluate_every": 2,
+  "debug": 1,
   "delta": 1.0
 }

@@ -1,6 +1,6 @@
 {
   "exp_name": "faster_rcnn_5layers",
-  "num_epochs": 1000,
+  "num_epochs": 100000,
   "num_iter_per_epoch": 100,
   "learning_rate": 0.001,
   "batch_size": 2,
@@ -31,7 +31,7 @@
   "num_features": 128,
   "val_split" : 0.2,
   "evaluate_every": 100,
-  "debug": 0,
+  "debug": 1,
   "delta": 1.0,
   "normalization": 0
 }

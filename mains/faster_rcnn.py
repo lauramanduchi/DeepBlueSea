@@ -21,13 +21,18 @@ def main():
     # then process the json configuration file
     # parse -c and put the wright config file ex. "-c configs/baseline.json"
 
-    try:
-        args = get_args()
-        config = process_config(args.config)
+    args = get_args()
+    config = process_config(args.config)
+    print(args.config)
 
-    except:
-        print("missing or invalid arguments")
-        exit(0)
+#    try:
+#        args = get_args()
+#        config = process_config(args.config)
+#        print(args.config)
+
+#    except:
+#        print("missing or invalid arguments")
+#        exit(0)
 
     print("we're in business")
     # create the experiments dirs
