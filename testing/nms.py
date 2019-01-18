@@ -11,11 +11,12 @@ def boxes_per_image(class_score, reg_score, n_proposals=2000, nms_thres=0.2, deb
     # Get n_prosal'th biggest probability
     prob_class = class_softmax(class_score)[:, :, :, 0]
     # Sort propabilities in asceding order [0.0, 0.1, ..., 1.0]
-    sorted_probs = prob_class.flatten().sort()
-    if len(sorted_probs) < n_proposals:
-        class_thresh = min(sorted_probs)
+    all_probs = prob_class.flatten()
+    all_probs.sort()
+    if len(all_probs) < n_proposals:
+        class_thresh = min(all_probs)
     else:
-        class_thresh = sorted_probs[-n_proposals]
+        class_thresh = all_probs[-n_proposals]
 
     neg_mask = prob_class < class_thresh
     if debug:
@@ -34,18 +35,20 @@ def boxes_per_image(class_score, reg_score, n_proposals=2000, nms_thres=0.2, deb
     boxes, to_keep_indexs = non_max_suppression_fast(trial_boxes, nms_thres)
     p = p[to_keep_indexs]
 
-    return {'boxes': list(boxes),
-            'scores': list(p)}
+    return {'boxes': boxes.tolist(),
+            'scores': p.tolist()}
 
 
 def class_softmax(x):
     """Compute softmax values for each sets of scores in x."""
+    epsilon = 0.0001
     shapes = np.shape(x)
+    print(shapes)
     if len(shapes) != 4:
         print("error! was expecting array of shape 4 [768, 768, n_anchors, 2]")
     nom = np.exp(x)
     denom = np.reshape(np.sum(nom, axis=-1), (shapes[0], shapes[1], shapes[2], 1))
-    return nom / np.tile(denom, (1, 1, 1, 2))
+    return (nom + epsilon)/(np.tile(denom, (1, 1, 1, 2)) + epsilon)
 
 
 # internet code for NMS

@@ -4,7 +4,7 @@ import json
 import glob
 import os
 import time
-
+from metrics import *
 
 import pandas as pd
 import seaborn as sns
@@ -16,10 +16,14 @@ def main():
     :return:
     '''
 
-    with open('ground_truth_boxes.json') as infile:
+    predictions_path = '../predictions/example2.json'
+    ground_truth_path = '../predictions/example.json'
+
+
+    with open(ground_truth_path) as infile:
         gt_boxes = json.load(infile)
 
-    with open('predicted_boxes.json') as infile:
+    with open(predictions_path) as infile:
         pred_boxes = json.load(infile)
 
     # Runs it for one IoU threshold

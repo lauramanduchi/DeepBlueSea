@@ -16,7 +16,7 @@ class DataGenerator:
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
         if config.debug == 1:
-            files = files[0:3]
+            files = files[0:2]
             print(files)
             self.input = files
         else:
