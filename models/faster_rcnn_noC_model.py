@@ -293,6 +293,8 @@ class FasterRcnnModelNoC(BaseModel):
                                                             stride=1,
                                                             data_format="NHWC")
 
+                        window_outputs = tf.nn.relu(window_outputs)
+
                     with tf.name_scope('classification_layer'):
                         layer_conv1 = create_convolution(input=window_outputs,
                                                                num_input_channels=self.config.sliding_hidden_layer_size,
@@ -430,7 +432,7 @@ class FasterRcnnModelNoC(BaseModel):
                 tf.summary.scalar(name='classification_loss', tensor=classification_loss)
                 tf.summary.scalar(name='regression_loss', tensor=regression_loss)
 
-                self.loss = 0.6*classification_loss + 0.4*regression_loss
+                self.loss = classification_loss + (self.config.alpha_loss)*regression_loss
 
                 tf.summary.scalar(name='total_loss', tensor=self.loss)
 
