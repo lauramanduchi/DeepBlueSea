@@ -37,8 +37,8 @@ class FasterRcnnModel(BaseModel):
                 y_anchors = np.zeros((1, 768, 768, n_anchors, 4))
                 x = np.arange(768)
                 X, Y = np.meshgrid(x, x)
-                y_anchors[:, :, :, :, 0] = np.reshape(Y, (1, 768, 768, 1))
-                y_anchors[:, :, :, :, 1] = np.reshape(X, (1, 768, 768, 1))
+                y_anchors[:, :, :, :, 0] = np.reshape(X, (1, 768, 768, 1))
+                y_anchors[:, :, :, :, 1] = np.reshape(Y, (1, 768, 768, 1))
                 i = 0
                 for anchor_shape in anchor_shapes:
                     y_anchors[:, :, :, i, 2] = np.ones((1, 768, 768)) * anchor_shape[0]  # width
@@ -267,11 +267,13 @@ class FasterRcnnModel(BaseModel):
                     # Realise that the sliding window can be implemented as a convolution
                     with tf.name_scope('sliding_window'):
                         window_outputs = create_convolution(input=self.feature_maps,
-                                                            num_input_channels=self.config.num_features,
+                                                            num_input_channels=self.config.num_filters_conv5,
                                                             conv_filter_size=self.config.window_size,
                                                             num_filters=self.config.sliding_hidden_layer_size,
                                                             stride=1,
                                                             data_format="NHWC")
+
+                        window_outputs = tf.nn.relu(window_outputs)
 
                     with tf.name_scope('classification_layer'):
                         self.class_scores = create_convolution(input=window_outputs,
@@ -385,7 +387,7 @@ class FasterRcnnModel(BaseModel):
                 tf.summary.scalar(name='classification_loss', tensor=classification_loss)
                 tf.summary.scalar(name='regression_loss', tensor=regression_loss)
 
-                self.loss = classification_loss + regression_loss
+                self.loss = classification_loss + (self.config.alpha_loss)*regression_loss
 
                 tf.summary.scalar(name='total_loss', tensor=self.loss)
 
