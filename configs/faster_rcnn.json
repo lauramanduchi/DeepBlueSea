@@ -26,5 +26,6 @@
   "val_split" : 0.2,
   "evaluate_every": 2,
   "debug": 1,
-  "delta": 1.0
+  "delta": 1.0,
+  "alpha_loss": 0.5
 }

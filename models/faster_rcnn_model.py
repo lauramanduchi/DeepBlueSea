@@ -26,11 +26,6 @@ class FasterRcnnModel(BaseModel):
             self.y_map = tf.placeholder(tf.float32, shape=[None, 768, 768, None])
             self.y_reg = tf.placeholder(tf.float32, shape=[None, 768, 768, None, 4])
 
-            #data_structure = {'image': tf.float32, 'y_map': tf.float32}
-            #data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
-            #             'y_map': tf.TensorShape([None, 768, 768, None])}
-
-            # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
                 anchor_shapes = [(21,21), (21, 41), (41,21), (41, 81), (81, 41), (51,51), (151,81), (81, 151), (101,101), (201,201)]
                 n_anchors = len(anchor_shapes)
