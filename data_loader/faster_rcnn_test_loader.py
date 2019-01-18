@@ -25,10 +25,11 @@ class DataGenerator:
     # first assume one batch will do it all
     def one_batch(self, n=0 , i=0):
         if n > 0:
-            batch_size = int(len(self.input)/n)
+            batch_size = self.config.batch_size
             filenames = [self.config.test_data_path + x for x in self.input[batch_size*i:batch_size*(i+1)]]
         else:
             filenames = [self.config.test_data_path + x for x in self.input[0:5]]
+
         input = self.read_images(filenames)
         y_data = []
         y_reg = []
@@ -40,7 +41,7 @@ class DataGenerator:
         y_data = self.padder(y_data)
         y_reg = self.padder_coord(y_reg)
 
-        return input, y_data, y_reg
+        return input, y_data, y_reg, filenames
 
     def read_images(self, filenames):
         '''

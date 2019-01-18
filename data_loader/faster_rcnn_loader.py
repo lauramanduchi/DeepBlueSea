@@ -21,30 +21,13 @@ class DataGenerator:
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
         if config.debug == 1:
+            print('CAUTION: DEBUGGING MODE')
             files = files[0:3]
             print(files)
             self.input = files
             self.input_dev = files
         else:
             self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
-
-        #filelist = [[path + x] for x in files[0:2]] # remember to delete [0:2] !!
-
-        #files = np.asarray(files)
-
-        #print('Converting y data to maps...')
-        #y_data = self.padder([self.get_y_data(file) for file in files[0:2]])
-        #print('Converted')
-
-        #filenames = tf.constant(filelist)
-        #y_data = tf.constant(y_data, dtype=tf.float32)
-
-        #dataset = tf.data.Dataset.from_tensor_slices((filenames,y_data))
-        #dataset = dataset.map(lambda filename, y_arr:self._ondisk_parse_(filename, y_arr)).shuffle(True).batch(self.config.batch_size)
-
-        #self.dataset_iterator = dataset.make_one_shot_iterator()
-
-        #self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
 
         # sampling indices:
         neg_indices = np.isin(no_boats, self.input)
