@@ -26,5 +26,5 @@ To test the model, download the test images from the link below and save them un
 Finally run `python testing/evaluate.py`. This file takes two json files (a groundtruth and prediction) and calculates mAP and plots a curve.
 Test images: https://polybox.ethz.ch/index.php/s/0gBtvmVmJyrX8a2
 
-# Credits
+## Credits
 Credits to https://github.com/MrGemy95/Tensorflow-Project-Template for the amazing template!
