@@ -11,7 +11,7 @@ We sampled 10'000 pictures out of the full dataset which can be found on https:/
 ## SLIC model
 Our SLIC model uses the superpixel segmentation SLIC algorithm ("SLIC Superpixels, Achanta et al., 2010") and apply on top of it a convolutional neural network to classify whether each patch contains a boat. 
 
-To test the SLIC model, download the test images from https://polybox.ethz.ch/index.php/s/0gBtvmVmJyrX8a2 and save the file in data folder. Then download the checkpoints of the CNN training https://polybox.ethz.ch/index.php/s/fUwhqZnAhiy6cgF and save the baseline file in experiments folder. Select the number of images you want to test in `configs/baseline.jsn` (default is 20). 
+To test the SLIC model, download the test images from https://polybox.ethz.ch/index.php/s/0gBtvmVmJyrX8a2 and save the file in data folder. Then download the checkpoints of the CNN training https://polybox.ethz.ch/index.php/s/fUwhqZnAhiy6cgF and save the baseline file in a folder called `experiments`. Select the number of images you want to test in `configs/baseline.jsn` (default is 20). 
 Then run `python mains/baseline_tester.py -c configs/baseline.jsn`.
 It will output each image with the predicted mask.
 
