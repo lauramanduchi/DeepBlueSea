@@ -9,6 +9,7 @@
   "window_size": 3,
   "sliding_hidden_layer_size": 128,
   "n_proposal_boxes": 10,
+  "test_data_path": "data/test_sample/",
   "training_data_path": "data/train_sample/",
   "labels_file": "data/labels/boxes_v2.csv",
   "iou_positive_threshold": 0.5,
@@ -41,5 +42,6 @@
   "debug": 1,
   "delta": 1.0,
   "normalization": 1,
-  "alpha_loss" : 0.7
+  "alpha_loss":1
 }
+>>>>>>> 621d0ad80a06142ba86cc8f388f0bc259ec82711

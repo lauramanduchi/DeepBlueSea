@@ -7,64 +7,33 @@ from matplotlib import image as mpimg
 import random
 
 
-
 class DataGenerator:
     def __init__(self, config):
         self.config = config
 
-        path = self.config.training_data_path
+        path = self.config.test_data_path
         self.y_raw = pd.read_csv(self.config.labels_file)
-
-        # for sampling :
-        no_boats = np.unique(np.array(self.y_raw[self.y_raw.width == 0].ImageId))
-        some_boats = np.unique(np.array(self.y_raw[self.y_raw.width > 0].ImageId))
 
         files = [x for x in os.listdir(path) if x[-3:] == 'jpg']
         if config.debug == 1:
-            print('CAUTION: DEBUGGING MODE')
-            files = files[0:3]
+            files = files[0:2]
             print(files)
             self.input = files
-            self.input_dev = files
         else:
-            self.input, self.input_dev = train_test_split(files, test_size=self.config.val_split)
+            self.input = files
 
-        # sampling indices:
-        neg_indices = np.isin(no_boats, self.input)
-        pos_indices = np.isin(some_boats, self.input)
-        self.input_pos = list(some_boats[pos_indices])
-        self.input_neg = list(no_boats[neg_indices])
+    # first assume one batch will do it all
+    def one_batch(self, n=0 , i=0):
+        if n > 0:
+            batch_size = self.config.batch_size
+            filenames = [self.config.test_data_path + x for x in self.input[batch_size*i:batch_size*(i+1)]]
+        else:
+            filenames = [self.config.test_data_path + x for x in self.input[0:5]]
 
-        # self.i = 0
-
-    def next_batch(self, batch_size):
-        idx_pos = np.random.choice(len(self.input_pos),
-                                   (round(batch_size * (1 - self.config.img_wo_boats_ratio))))
-        sub_input_pos = [self.input_pos[i] for i in idx_pos]
-        #print(batch_size * self.config.img_wo_boats_ratio, round(batch_size * self.config.img_wo_boats_ratio))
-        print(len(self.input_neg))
-        idx_neg = np.random.choice(len(self.input_neg),
-                                   round(batch_size * self.config.img_wo_boats_ratio))
-        sub_input_neg = [self.input_neg[i] for i in idx_neg]
-        sub_input = sub_input_pos + sub_input_neg
-        random.shuffle(sub_input)
-
-        # if self.i % 2:
-        #    idx_pos = np.random.choice(len(self.input_pos),
-        #                               round(batch_size * (1 - self.config.img_wo_boats_ratio)))
-        #    sub_input = [self.input_pos[i] for i in idx_pos]
-        # else:
-        #    idx_neg = np.random.choice(len(self.input_neg),
-        #                               round(batch_size * self.config.img_wo_boats_ratio))
-        #    sub_input = [self.input_neg[i] for i in idx_neg]
-        #self.i += 1
-
-        filenames = [self.config.training_data_path + x for x in sub_input]
         input = self.read_images(filenames)
-
         y_data = []
         y_reg = []
-        for file in sub_input:
+        for file in self.input:
             out_y_data = self.get_y_data(file)
             y_data.append(out_y_data[0])
             y_reg.append(out_y_data[1])
@@ -72,24 +41,7 @@ class DataGenerator:
         y_data = self.padder(y_data)
         y_reg = self.padder_coord(y_reg)
 
-        yield input, y_data, y_reg
-
-    def next_batch_dev(self, batch_size):
-        idx = np.random.choice(len(self.input_dev), batch_size)
-        sub_input_dev = [self.input_dev[i] for i in idx]
-        filenames_dev = [self.config.training_data_path + x for x in sub_input_dev]
-        input_dev = self.read_images(filenames_dev)
-
-        y_data_dev = []
-        y_reg_dev = []
-        for file in sub_input_dev:
-            out_y_data = self.get_y_data(file)
-            y_data_dev.append(out_y_data[0])
-            y_reg_dev.append(out_y_data[1])
-        y_data_dev = self.padder(y_data_dev)
-        y_reg_dev = self.padder_coord(y_reg_dev)
-
-        yield input_dev, y_data_dev, y_reg_dev
+        return input, y_data, y_reg, filenames
 
     def read_images(self, filenames):
         '''
@@ -150,7 +102,7 @@ class DataGenerator:
 
         b = np.zeros([len(list_of_arr), dim_arr[0], dim_arr[1], maximum_n_boats])
         for i, arr in enumerate(list_of_arr):
-            b[i,:, :, :arr.shape[2]] = arr
+            b[i, :, :, :arr.shape[2]] = arr
         return b
 
     def padder_coord(self, list_of_arr):
