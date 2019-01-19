@@ -103,6 +103,14 @@ def create_flatten_layer(layer):
 
     return layer
 
+def create_flatten_layer1(layer):
+    layer_shape = layer.get_shape()
+    num_features = layer_shape[2:5].num_elements()
+    layer = tf.reshape(layer, [2, -1, num_features])
+
+    return layer
+
+
 
 def unflatten_layer(layer):
     layer_shape = layer.get_shape()
@@ -125,6 +133,9 @@ def create_fc_layer(input,
         layer = tf.nn.relu(layer)
 
     return layer
+
+
+
 
 def create_convolution(input,
                        num_input_channels,

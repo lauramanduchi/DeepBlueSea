@@ -15,5 +15,6 @@
   "filter_size_conv3" : 3,
   "num_filters_conv3" : 64,
   "fc_layer_size" : 128,
-  "val_split" : 0.2
+  "val_split" : 0.2,
+  "test_size" : 20
 }

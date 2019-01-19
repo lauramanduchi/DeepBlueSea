@@ -154,12 +154,12 @@ class FasterRcnnModelNoC(BaseModel):
                     print('temp_pos_mask', temp_pos_mask.shape)
 
                 # Stack iou_average_for_summary
-                iou_average_for_summary = tf.stack(iou_average_for_summary, -1)
-                iou_average_for_summary = tf.reduce_mean(iou_average_for_summary, -1)
-                tf.summary.scalar(name='max_over_pixels_average_groundtruth_iou_over_anchors',
-                                  tensor=tf.reduce_max(iou_average_for_summary))
+                #iou_average_for_summary = tf.stack(iou_average_for_summary, -1)
+                #iou_average_for_summary = tf.reduce_mean(iou_average_for_summary, -1)
+                #tf.summary.scalar(name='max_over_pixels_average_groundtruth_iou_over_anchors',
+                                  #tensor=tf.reduce_max(iou_average_for_summary))
 
-                summarise_map(name='average_groundtruth_iou_over_anchors', tensor=iou_average_for_summary)
+                #summarise_map(name='average_groundtruth_iou_over_anchors', tensor=iou_average_for_summary)
 
                 # Filter y_reg by which boxes are positive
                 y_reg_gt = []
@@ -244,32 +244,32 @@ class FasterRcnnModelNoC(BaseModel):
                 layer_conv3 = create_convolutional_layer(input=layer_conv2,
                                                          num_input_channels=self.config.num_filters_conv2,
                                                          conv_filter_size=self.config.filter_size_conv3,
-                                                         num_filters=self.config.num_filters_conv3,
+                                                         num_filters=64,
                                                          maxpool=0,
                                                          name='conv_layer_3')
 
                 layer_conv4 = create_convolutional_layer(input=layer_conv3,
-                                                         num_input_channels=self.config.num_filters_conv3,
+                                                         num_input_channels=64,
                                                          conv_filter_size=self.config.filter_size_conv4,
                                                          num_filters=self.config.num_filters_conv4,
                                                          maxpool=0,
                                                          name='conv_layer_4')
 
-                layer_conv5 = create_convolutional_layer(input=layer_conv4,
-                                                         num_input_channels=self.config.num_filters_conv4,
-                                                         conv_filter_size=self.config.filter_size_conv5,
-                                                         num_filters=self.config.num_filters_conv5,
-                                                         maxpool=0,
-                                                         name='conv_layer_5')
+                # layer_conv5 = create_convolutional_layer(input=layer_conv4,
+                #                                          num_input_channels=self.config.num_filters_conv4,
+                #                                          conv_filter_size=self.config.filter_size_conv5,
+                #                                          num_filters=self.config.num_filters_conv5,
+                #                                          maxpool=0,
+                #                                          name='conv_layer_5')
 
 
-                pool = tf.nn.max_pool(value=layer_conv5,
+                pool = tf.nn.max_pool(value=layer_conv4,
                                       ksize=[1, 2, 2, 1],
                                       strides=[1, 2, 2, 1],
                                       padding='SAME')
 
                 self.feature_maps = create_deconvolutional_layer(input=pool,
-                                                            num_filters=self.config.num_filters_conv5,
+                                                            num_filters=self.config.num_filters_conv4,
                                                             name='deconvolution',
                                                             upscale_factor=2)
 
@@ -300,12 +300,12 @@ class FasterRcnnModelNoC(BaseModel):
                                                                num_input_channels=self.config.sliding_hidden_layer_size,
                                                                conv_filter_size=1,
                                                                #num_filters=self.config.n_proposal_boxes,
-                                                               num_filters=self.config.C_num_filters_conv3,
+                                                               num_filters=64,
                                                                stride=1,
                                                                data_format="NHWC")
 
                         self.class_scores = create_convolution(input=layer_conv1,
-                                                             num_input_channels=self.config.C_num_filters_conv3,
+                                                             num_input_channels=64,
                                                              conv_filter_size=1,
                                                              num_filters=self.config.n_proposal_boxes * 2,
                                                              stride=1,
@@ -319,22 +319,16 @@ class FasterRcnnModelNoC(BaseModel):
 
                     with tf.name_scope('regression_layer'):
                         # reg_outputs: [batch_size, 768, 768, 4*self.config.n_proposal_boxes]
-                        layer_conv1 = create_convolution(input=window_outputs,
-                                                             num_input_channels=self.config.sliding_hidden_layer_size,
-                                                             conv_filter_size=1,
-                                                             num_filters=self.config.C_num_filters_conv3,
-                                                             stride=1,
-                                                             data_format="NHWC")
 
-                        reg_outputs = create_convolution(input=layer_conv1,
-                                                             num_input_channels=self.config.C_num_filters_conv3,
+                        self.reg_scores = create_convolution(input=window_outputs,
+                                                             num_input_channels=self.config.sliding_hidden_layer_size,
                                                              conv_filter_size=1,
                                                              num_filters=self.config.n_proposal_boxes * 2,
                                                              stride=1,
                                                              data_format="NHWC")
 
                         # self.reg_scores: [batch_size, 768, 768, self.config.n_proposal_boxes, 4]
-                        self.reg_scores = tf.reshape(tensor=reg_outputs,
+                        self.reg_scores = tf.reshape(tensor=self.reg_scores,
                                                      shape=[-1, 768, 768, self.config.n_proposal_boxes, 2],
                                                      name='reshape_regression_outputs')
 
@@ -350,8 +344,7 @@ class FasterRcnnModelNoC(BaseModel):
                                                [self.config.batch_size, 768, 768, self.config.n_proposal_boxes, 2])
 
                 ones = tf.constant(1, dtype = tf.float32, shape=[self.config.batch_size, 768, 768, self.config.n_proposal_boxes])
-                y = tf.subtract(ones, y_iou)
-                y_iou = tf.stack([y_iou, y], axis=-1)
+                y_iou = tf.stack([y_iou, tf.subtract(ones, y_iou)], axis=-1)
                 sigmoid_ce = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_iou,
                                                                      logits=self.class_scores)
 
@@ -362,8 +355,8 @@ class FasterRcnnModelNoC(BaseModel):
                 # Remember that we only look at positive (> upper iou thresh) and negative (< iou thresh) boxes
                 masked_signoid_ce = tf.multiply(class_mask, sigmoid_ce)
 
-                classification_loss_per_sample = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
-                classification_loss = tf.reduce_mean(classification_loss_per_sample)
+                classification_loss = tf.reduce_sum(masked_signoid_ce, axis = [1,2,3])
+                classification_loss = tf.reduce_mean(classification_loss)
 
                 if self.config.debug == 1:
                     print('sigmoid_ce  ', sigmoid_ce.shape)
@@ -379,12 +372,10 @@ class FasterRcnnModelNoC(BaseModel):
                     #t_y = (self.reg_scores[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / (reg_anchors[:, :, :, :, 3] + epsilon)
                     #t_y_star = (self.y_reg_gt[:, :, :, :, 1] - reg_anchors[:, :, :, :, 1]) / (reg_anchors[:, :, :, :, 3] + epsilon)
 
-                    reg_adj_1 = tf.maximum(self.reg_scores[:, :, :, :, 0], epsilon)
-                    t_w = tf.log(reg_adj_1 / (reg_anchors[:, :, :, :, 2] + epsilon))
+                    t_w = tf.log(tf.maximum(self.reg_scores[:, :, :, :, 0], epsilon) / (reg_anchors[:, :, :, :, 2] + epsilon))
                     t_w_star = tf.log((self.y_reg_gt[:, :, :, :, 2]) / (reg_anchors[:, :, :, :, 2] + epsilon))
 
-                    reg_adj_2 = tf.maximum(self.reg_scores[:, :, :, :, 1], epsilon)
-                    t_h = tf.log(reg_adj_2 / (reg_anchors[:, :, :, :, 3] + epsilon))
+                    t_h = tf.log(tf.maximum(self.reg_scores[:, :, :, :, 1], epsilon) / (reg_anchors[:, :, :, :, 3] + epsilon))
                     t_h_star = tf.log((self.y_reg_gt[:, :, :, :, 3])/ (reg_anchors[:, :, :, :, 3] + epsilon))
 
                     y_reg_loss_pred = tf.stack([t_w, t_h], axis=-1)
@@ -402,11 +393,11 @@ class FasterRcnnModelNoC(BaseModel):
 
                 # Remember that we only look at positive (> upper iou thresh) boxes
                 # Expand mask to have dimension for 4 coordiantes. Now of shape [batch, 768, 768, n_proposal_boxes, 4]
-                iou_mask_regression = tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 2])
 
-                masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, iou_mask_regression)
+                #iou_mask_regression = tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 2])
 
-                # TODO: better solution
+                masked_regression_loss_per_pixel = tf.multiply(regression_loss_per_pixel, tf.tile(tf.expand_dims(pos_mask, -1), [1, 1, 1, 1, 2]))
+
                 # Replace nans with 0s
                 masked_regression_loss_per_pixel = tf.where(tf.is_nan(masked_regression_loss_per_pixel),
                                                             tf.zeros_like(masked_regression_loss_per_pixel),
@@ -426,8 +417,8 @@ class FasterRcnnModelNoC(BaseModel):
                 tf.summary.scalar(name='height_reg_loss', tensor=seperate_coordinate_losses[1])
 
 
-                regression_loss_per_sample = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
-                regression_loss = tf.reduce_mean(regression_loss_per_sample)
+                regression_loss = tf.reduce_sum(masked_regression_loss_per_pixel, axis=[1,2,3,4])
+                regression_loss = tf.reduce_mean(regression_loss)
 
                 tf.summary.scalar(name='classification_loss', tensor=classification_loss)
                 tf.summary.scalar(name='regression_loss', tensor=regression_loss)
