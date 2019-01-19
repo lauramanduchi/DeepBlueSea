@@ -15,7 +15,7 @@ def main():
     '''
 
     predictions_path = 'predictions/faster_rcnn_5layersNorm.json'
-    ground_truth_path = 'data/labels/groundtruth_boxes.json'
+    ground_truth_path = 'data/labels/test_groundtruth_boxes.json'
 
 
     with open(ground_truth_path) as infile:
