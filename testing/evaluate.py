@@ -14,8 +14,8 @@ def main():
     :return:
     '''
 
-    predictions_path = '../predictions/.json'
-    ground_truth_path = '../labels/groundtruth_boxes.json'
+    predictions_path = 'predictions/faster_rcnn_5layersNorm.json'
+    ground_truth_path = 'data/labels/groundtruth_boxes.json'
 
 
     with open(ground_truth_path) as infile:
