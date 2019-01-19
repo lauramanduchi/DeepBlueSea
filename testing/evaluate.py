@@ -1,13 +1,11 @@
 from metrics import *
+import matplotlib.pyplot as plt
+import numpy as np
 
 import json
-import glob
-import os
 import time
 from metrics import *
 
-import pandas as pd
-import seaborn as sns
 # Code based on https://gist.github.com/tarlen5/008809c3decf19313de216b9208f3734
 
 def main():
@@ -16,8 +14,8 @@ def main():
     :return:
     '''
 
-    predictions_path = '../predictions/example2.json'
-    ground_truth_path = '../predictions/example.json'
+    predictions_path = '../predictions/.json'
+    ground_truth_path = '../labels/groundtruth_boxes.json'
 
 
     with open(ground_truth_path) as infile:

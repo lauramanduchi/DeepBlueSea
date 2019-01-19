@@ -58,7 +58,7 @@ def main():
 
     dump_path = 'predictions/' + config.exp_name+'.json'
     with open(dump_path, 'w') as fp:
-        json.dump(prediction_dict, fp)
+        json.dump(prediction_dict, fp, indent=4)
         print('Wrote to ' + dump_path)
 
 

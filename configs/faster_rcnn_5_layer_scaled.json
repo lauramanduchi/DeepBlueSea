@@ -18,9 +18,9 @@
   "n_negative_samples": 50,
   "n_negative_samples_when_no_boats": 50,
   "initial_im_size": 768,
-  "filter_size_conv1": 3,
+  "filter_size_conv1": 7,
   "num_filters_conv1": 64,
-  "filter_size_conv2": 3,
+  "filter_size_conv2": 5,
   "num_filters_conv2": 64,
   "filter_size_conv3": 3,
   "num_filters_conv3": 64,
@@ -34,5 +34,5 @@
   "debug": 0,
   "delta": 1.0,
   "normalization": 1,
-  "alpha_loss": 0.5
+  "alpha_loss": 0
 }

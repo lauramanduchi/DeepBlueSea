@@ -3,7 +3,7 @@
   "num_epochs": 800,
   "num_iter_per_epoch": 10,
   "learning_rate": 0.001,
-  "batch_size": 2,
+  "batch_size": 10,
   "num_channels": 3,
   "max_to_keep": 1,
   "window_size": 3,
@@ -25,7 +25,7 @@
   "num_features": 64,
   "val_split" : 0.2,
   "evaluate_every": 2,
-  "debug": 1,
+  "debug": 0,
   "delta": 1.0,
   "alpha_loss": 0.5
 }
