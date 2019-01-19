@@ -30,7 +30,6 @@ class FasterRcnnModelNoC(BaseModel):
             #data_shape = {'image': tf.TensorShape([None, 768, 768, self.config.num_channels]),
             #             'y_map': tf.TensorShape([None, 768, 768, None])}
 
-            # TODO: add this to the config somehow / move out of code as it only needs to be calculated once
             with tf.name_scope('expand_anchor_shapes_for_reg'):
                 anchor_shapes = [(21,21), (21, 41), (41,21), (41, 81), (81, 41), (51,51), (151,81), (81, 151), (101,101), (201,201)]
                 n_anchors = len(anchor_shapes)
@@ -71,7 +70,6 @@ class FasterRcnnModelNoC(BaseModel):
                     # where every entry is 0 except for [:,:, i, i] for all i.
                     # (I think) this is equivalent to running a seperate "all ones" [anchor_shape[0], anchor_shape[1], 1]
                     # kernel over each of the max_n_boats inputs.
-                    # TODO: double (triple, quadruple...) check above logic.
 
                     anchor = tf.zeros((anchor_shape[0], anchor_shape[1], n_box, n_box))
                     diagonal = tf.ones((anchor_shape[0], anchor_shape[1], n_box))
@@ -84,7 +82,7 @@ class FasterRcnnModelNoC(BaseModel):
                     intersection = tf.nn.conv2d(self.y_map, anchor, strides=[1, 1, 1, 1], padding='SAME')
 
                     # union is the area of the map (per map layer, and per batch entry) + the anchor area (in 2d)
-                    # TODO: check that minusing intersection does so entry wise.
+
                     union = tf.reduce_sum(self.y_map, [1, 2], keepdims=True) + anchor_area - intersection
                     ious = tf.divide(intersection, union)
 
@@ -184,7 +182,6 @@ class FasterRcnnModelNoC(BaseModel):
                 # note: instead of tf.reduce_sum(self.y_map) > 0, we want tf.reduce_sum(self.y_map, [1,2,3])
                 # the latter gives us the sum of the ground truth per image
                 # if the sum is positive, then there are boats in the image and we want to sample some
-                # TODO: fix :)
                 class_mask = []
                 pos_mask = []
 
@@ -200,7 +197,6 @@ class FasterRcnnModelNoC(BaseModel):
                     # sampling
                     # note that atm pos_sample applies the same sampling over the whole batch
                     # refer to utils for the function
-                    # TODO: fix :)
                     pos_sample = tf.py_func(np_sample, [temp_pos_mask[i], 1, n_positive_samples], tf.float64)
                     pos_sample = tf.cast(pos_sample, tf.float32)
                     #pos_mask = temp_pos_mask * pos_sample
