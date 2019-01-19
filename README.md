@@ -15,3 +15,5 @@ It will output each image with the predicted mask.
 
 # Adapted Faster R-CNN
 The model is essentially a modified version of the Region Proposal Network of Faster R-CNN. The multiclass classifier of Faster R-CNN is not needed since our problem is a binary task (ship or background), hence we chop that part off our model. The RPN consists mainly on a FCN that generates a feature map of an image, plus another CNN with two branches, one proposing bounding boxes and the other giving probabilities of those boxes containing ships.
+
+Checkpoints: https://polybox.ethz.ch/index.php/s/kE1YRyRUPmBCGmB.
