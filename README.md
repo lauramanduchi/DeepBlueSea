@@ -28,3 +28,4 @@ Test images: https://polybox.ethz.ch/index.php/s/0gBtvmVmJyrX8a2
 
 ## Credits
 Credits to https://github.com/MrGemy95/Tensorflow-Project-Template for the amazing template!
+mAP scoring code adapted from https://gist.github.com/tarlen5/008809c3decf19313de216b9208f3734
