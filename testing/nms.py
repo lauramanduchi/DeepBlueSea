@@ -9,7 +9,7 @@ def boxes_per_image(class_score, reg_score, n_proposals=2000, nms_thres=0.2, deb
     :return: list of coordinates and list of scores where coordinates are [x1, x2, y1, y2]
     '''
     # Get n_prosal'th biggest probability
-    prob_class = class_softmax(class_score)[:, :, :, 1]
+    prob_class = class_softmax(class_score)[:, :, :, 0]
     # Sort propabilities in asceding order [0.0, 0.1, ..., 1.0]
     all_probs = prob_class.flatten()
     all_probs.sort()
