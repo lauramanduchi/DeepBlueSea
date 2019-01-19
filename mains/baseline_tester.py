@@ -32,10 +32,9 @@ def main():
 
     # LOADING DATA AND PREPROCESSING
     path = './data/'
-    pimg = 'test_sample/'
+    pimg = 'test_images/'
     nfiles = len(os.listdir(path + pimg))
-    b_size = 50
-    imgs = load_test_batch(path, pimg, nfiles, batch_size=b_size)
+    imgs = load_test_batch(path, pimg, nfiles, batch_size=config.test_size)
     list_patches, SLIC_list = get_patches(imgs)
     print("Got the patches.")
 
@@ -60,7 +59,7 @@ def main():
     pred = sess.run([model.pred], feed_dict=feed_dict)
     labels_flat_copy = pred[0].copy()
 
-    for index in range(b_size):
+    for index in range(config.test_size):
         slic_np = np.array(SLIC_list[index])
         values = slic_np.flatten()
         nl = len(set(values))

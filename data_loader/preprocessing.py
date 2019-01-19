@@ -75,16 +75,6 @@ def load_test_batch(path, pimg, nfiles, batch_size=1000):
     return imgs
 
 
-def old_box(seg, i):
-    xind = np.nonzero(seg.ravel('C') == i)
-    [xmax, _] = np.unravel_index(np.max(xind), seg.shape, order='C')
-    [xmin, _] = np.unravel_index(np.min(xind), seg.shape, order='C')
-    yind = np.nonzero(seg.ravel('F') == i)
-    [_, ymax] = np.unravel_index(np.max(yind), seg.shape, order='F')
-    [_, ymin] = np.unravel_index(np.min(yind), seg.shape, order='F')
-    return np.array([xmax, ymax, xmin, ymin])
-
-
 def box(seg):
     list_box = []
     for i in range(np.max(seg)+1):
@@ -96,19 +86,6 @@ def box(seg):
         [_, ymin] = np.unravel_index(np.min(yind), seg.shape, order = 'F')
         list_box.append(np.array([xmax, ymax, xmin, ymin]))
     return list_box
-
-
-def old_patch_cat(gt, SLIC, i, thres1, thres2):
-    num = np.sum(gt[SLIC == i] > 125)
-    denom = gt[SLIC == i].size
-    size_true = np.sum(gt > 125)
-    if float(num) / float(denom) > thres1:
-        return 1
-    else:
-        if float(size_true) > 0 and float(num) / float(size_true) > thres2:
-            return 1
-        else:
-            return 0
 
 
 def patch_cat(gt_SLIC, thres1, thres2):
@@ -129,16 +106,6 @@ def patch_cat(gt_SLIC, thres1, thres2):
     return label_list
 
 
-def old_xpatchify(img, SLIC, boxed, i):
-    [inda, indb] = np.nonzero(SLIC != i)
-    imtemp = np.copy(img)
-    imtemp[inda, indb, :] = 0
-    x_temp = imtemp[int(boxed[2]):int(boxed[0]),
-             int(boxed[3]):int(boxed[1])]
-    x_train = resize(x_temp, (80, 80))
-    return (x_train)
-
-
 def xpatchify(img_SLIC_boxed):
     img = img_SLIC_boxed[0]
     SLIC = img_SLIC_boxed[1]
@@ -150,44 +117,9 @@ def xpatchify(img_SLIC_boxed):
         imtemp[inda,indb,:] = 0
         x_temp = imtemp[int(boxed[i][2]):int(boxed[i][0]),
                      int(boxed[i][3]):int(boxed[i][1])]
-        x_train = resize(x_temp, (60,60))
+        x_train = resize(x_temp, (40,40))
         list_patches.append(x_train)
     return(list_patches)
-
-
-def old_get_labeled_patches(imgs, gts, n_segments=100, thres1=0.2, thres2=0.2):
-    """
-    Get all the patches from the set of images.
-    :param imgs: images
-    :param gts: masks
-    :param n_segments: max number of patches for image
-    :param thres1: label = 1 if a proportion bigger than thres1 in the patch is masked as 1
-    :param thres2: label = 1 if pixels masked as 1 in patch / total number of pixels masked as 1 in the picture > thres2
-    :return: patches: list of patches, size [len(img), n_patches_per_image, 80,80]
-    :return: labels: list of labels per each patch, size [len(img), n_patches_per_image]
-    """
-    n = len(imgs)
-    SLIC_list = np.asarray([slic(imgs[i, :], n_segments, compactness=20, sigma=10) for i in range(len(imgs))])
-
-    # initialise boxes
-    # run box function to find all superpixel patches sizes
-    boxes = np.empty((n, 0)).tolist()
-    for i in range(n):
-        [boxes[i].append(old_box(SLIC_list[i, :], j)) for j in range(np.max(SLIC_list[i, :]))]
-
-    patches = np.empty((n, 0)).tolist()
-    # populating x_train
-    for i in range(n):
-        for j in range(np.max(SLIC_list[i, :])):
-            patches[i].append(old_xpatchify(imgs[i, :], SLIC_list[i, :], boxes[i][j], j))
-
-    # labels
-    labels = np.empty((n, 0)).tolist()
-    for j in range(n):
-        [labels[j].append(old_patch_cat(gts[j, :], SLIC_list[j, :], i, thres1, thres2)) for i in
-         range(np.max(SLIC_list[j, :]))]
-
-    return patches, labels
 
 
 def get_labeled_patches(imgs, gts, n_segments=100, thres1=0.2, thres2=0.2):
