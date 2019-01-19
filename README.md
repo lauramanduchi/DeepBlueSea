@@ -4,7 +4,9 @@ ETH students in Deep Learning attempting to solve kaggle competition airbus-ship
 The problem consists of detecting all ships in satellite colour images. 
 A bounding box must be generated around every instance of a ship in an image.
 
-Credits to https://github.com/MrGemy95/Tensorflow-Project-Template for the amazing template
+# Data
+The data can be found on the official kaggle web page https://www.kaggle.com/c/airbus-ship-detection/data
+We sampled 10'000 pictures out of the full dataset which can be found on https://polybox.ethz.ch/index.php/s/Td5L3qgKayPIm9s
 
 # SLIC model
 Our SLIC model uses the superpixel segmentation SLIC algorithm ("SLIC Superpixels, Achanta et al., 2010") and apply on top of it a convolutional neural network to classify whether each patch contains a boat. 
@@ -23,3 +25,6 @@ Checkpoints: https://polybox.ethz.ch/index.php/s/kE1YRyRUPmBCGmB.
 To test the model, download the test images from the link below and save them under `data\test_sample\`, then run `python mains/faster_rcnnNoC_tester.py -c "configs/faster_rcnn_5layersNorm.json.json`. This will create a file in the predictions directory containing the untreated bounding boxes proposals under a `faster_rcnn_5layersNorm.json.json` file. For more details, the tester program chooses the boxes with the top 2000 probabilities and then runs NMS on these 2000 boxes with a NMS threshold of 0.2 (both configurable in the faster_rcnnNoC_tester.py file). Running NMS before only taking 2000 boxes would potentially be too slow. 
 Finally run `python testing/evaluate.py`. This file takes two json files (a groundtruth and prediction) and calculates mAP and plots a curve.
 Test images: https://polybox.ethz.ch/index.php/s/0gBtvmVmJyrX8a2
+
+# Credits
+Credits to https://github.com/MrGemy95/Tensorflow-Project-Template for the amazing template
